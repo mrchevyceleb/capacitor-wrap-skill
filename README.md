@@ -69,8 +69,10 @@ The skill will guide you through:
 | `app/api/webhooks/revenuecat/route.ts` | Webhook handler |
 | `codemagic.yaml` | iOS/Android CI/CD config |
 | `docs/APP_STORE_GUIDE.md` | Store submission guide |
+| `docs/SECRET_INFO.md` | Keystore passwords (**DO NOT COMMIT**) |
 | `scripts/generate-app-icons.mjs` | Icon generation script |
 | `android/` | Android native project |
+| `android/*-release.keystore` | Release signing key (**DO NOT COMMIT**) |
 | `ios/` | iOS native project |
 
 ## Prerequisites
@@ -90,19 +92,34 @@ The skill will guide you through:
 
 ## Build Commands
 
-### Android (Windows)
+### Android Debug
 ```bash
 cd android
-.\gradlew.bat assembleDebug    # Debug APK
-.\gradlew.bat bundleRelease    # Release AAB for Play Store
+./gradlew assembleDebug    # Windows: .\gradlew.bat assembleDebug
 ```
 
-### Android (macOS/Linux)
-```bash
+### Android Release (Signed for Play Store)
+
+**Important**: You must set environment variables with your keystore credentials before building.
+
+**Windows PowerShell:**
+```powershell
+$env:MYAPP_KEYSTORE_PATH = "C:\path\to\myapp-release.keystore"
+$env:MYAPP_KEYSTORE_PASSWORD = "your-password"
+$env:MYAPP_KEY_ALIAS = "myapp"
+$env:MYAPP_KEY_PASSWORD = "your-password"
 cd android
-./gradlew assembleDebug
-./gradlew bundleRelease
+.\gradlew.bat bundleRelease
 ```
+
+**macOS/Linux/Git Bash:**
+```bash
+MYAPP_KEYSTORE_PATH="/path/to/keystore" MYAPP_KEYSTORE_PASSWORD="pass" MYAPP_KEY_ALIAS="myapp" MYAPP_KEY_PASSWORD="pass" ./gradlew bundleRelease
+```
+
+Output: `android/app/build/outputs/bundle/release/app-release.aab`
+
+> **Note**: The skill generates a keystore and stores credentials in `docs/SECRET_INFO.md`. Keep this file safe and never commit it!
 
 ### iOS (macOS)
 ```bash

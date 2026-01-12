@@ -158,6 +158,81 @@ Update `AndroidManifest.xml` with:
 - Billing permission (if RevenueCat)
 - HTTPS-only traffic
 
+### Phase 6.5: Generate Release Keystore & Signing Config
+
+**CRITICAL**: Google Play requires signed AABs. This phase sets up release signing.
+
+#### 1. Generate a release keystore:
+```bash
+keytool -genkey -v -keystore android/{{APP_NAME_LOWER}}-release.keystore -keyalg RSA -keysize 2048 -validity 10000 -alias {{APP_NAME_LOWER}}
+```
+
+When prompted, enter:
+- Keystore password (strong, memorable)
+- Key password (can be same as keystore)
+- Your name, organization, location info
+
+#### 2. Update `android/app/build.gradle` with signing config:
+
+Add inside the `android { }` block:
+```groovy
+signingConfigs {
+    release {
+        if (System.getenv("{{APP_NAME_UPPER}}_KEYSTORE_PATH")) {
+            storeFile file(System.getenv("{{APP_NAME_UPPER}}_KEYSTORE_PATH"))
+            storePassword System.getenv("{{APP_NAME_UPPER}}_KEYSTORE_PASSWORD")
+            keyAlias System.getenv("{{APP_NAME_UPPER}}_KEY_ALIAS")
+            keyPassword System.getenv("{{APP_NAME_UPPER}}_KEY_PASSWORD")
+        }
+    }
+}
+```
+
+Update the `buildTypes { release { } }` block to use signing:
+```groovy
+buildTypes {
+    release {
+        minifyEnabled true
+        shrinkResources true
+        proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        if (System.getenv("{{APP_NAME_UPPER}}_KEYSTORE_PATH")) {
+            signingConfig signingConfigs.release
+        }
+    }
+}
+```
+
+#### 3. Create `docs/SECRET_INFO.md` to store credentials:
+```markdown
+# {{APP_NAME}} Secret Info - KEEP THIS SAFE!
+
+**DO NOT share this file or commit it to GitHub!**
+
+## Keystore (Android Signing)
+
+| Setting | Value |
+|---------|-------|
+| File location | `android/{{APP_NAME_LOWER}}-release.keystore` |
+| Password | `YOUR_PASSWORD_HERE` |
+| Key alias | `{{APP_NAME_LOWER}}` |
+| Key password | `YOUR_PASSWORD_HERE` |
+
+## What to Backup
+
+1. `android/{{APP_NAME_LOWER}}-release.keystore` - The keystore file
+2. This file (`SECRET_INFO.md`) - Your passwords
+
+**WARNING**: If you lose the keystore, you can NEVER update your app on Google Play!
+```
+
+#### 4. Add keystore to `.gitignore`:
+```
+# Keystore
+*.keystore
+*.jks
+docs/SECRET_INFO.md
+```
+
 ### Phase 7: RevenueCat Integration (Optional)
 
 Create `lib/services/revenuecat.ts`:
@@ -198,23 +273,46 @@ Create comprehensive guide including:
 | `app/api/webhooks/revenuecat/route.ts` | Webhook handler |
 | `codemagic.yaml` | iOS/Android CI/CD config |
 | `docs/APP_STORE_GUIDE.md` | Store submission guide |
+| `docs/SECRET_INFO.md` | Keystore passwords (DO NOT COMMIT) |
 | `scripts/generate-app-icons.mjs` | Icon generation script |
+| `android/*-release.keystore` | Release signing key (DO NOT COMMIT) |
 
 ## Build Commands
 
-### Android (Windows)
+### Android Debug (unsigned)
 ```bash
 cd android
-.\gradlew.bat assembleDebug    # Debug APK
-.\gradlew.bat bundleRelease    # Release AAB
+./gradlew assembleDebug    # Debug APK (Windows: .\gradlew.bat)
 ```
 
-### Android (macOS/Linux)
-```bash
+### Android Release (signed - for Google Play)
+
+**Windows PowerShell:**
+```powershell
+$env:{{APP_NAME_UPPER}}_KEYSTORE_PATH = "C:\path\to\{{APP_NAME_LOWER}}-release.keystore"
+$env:{{APP_NAME_UPPER}}_KEYSTORE_PASSWORD = "YOUR_PASSWORD"
+$env:{{APP_NAME_UPPER}}_KEY_ALIAS = "{{APP_NAME_LOWER}}"
+$env:{{APP_NAME_UPPER}}_KEY_PASSWORD = "YOUR_PASSWORD"
 cd android
-./gradlew assembleDebug
+.\gradlew.bat bundleRelease
+```
+
+**macOS/Linux:**
+```bash
+export {{APP_NAME_UPPER}}_KEYSTORE_PATH="/path/to/{{APP_NAME_LOWER}}-release.keystore"
+export {{APP_NAME_UPPER}}_KEYSTORE_PASSWORD="YOUR_PASSWORD"
+export {{APP_NAME_UPPER}}_KEY_ALIAS="{{APP_NAME_LOWER}}"
+export {{APP_NAME_UPPER}}_KEY_PASSWORD="YOUR_PASSWORD"
+cd android
 ./gradlew bundleRelease
 ```
+
+**One-liner (bash/Git Bash on Windows):**
+```bash
+cd android && {{APP_NAME_UPPER}}_KEYSTORE_PATH="/path/to/keystore" {{APP_NAME_UPPER}}_KEYSTORE_PASSWORD="pass" {{APP_NAME_UPPER}}_KEY_ALIAS="alias" {{APP_NAME_UPPER}}_KEY_PASSWORD="pass" ./gradlew bundleRelease
+```
+
+Output: `android/app/build/outputs/bundle/release/app-release.aab`
 
 ### iOS (macOS)
 ```bash
