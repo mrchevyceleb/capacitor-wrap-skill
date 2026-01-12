@@ -1,0 +1,119 @@
+# Codemagic CI/CD Configuration Example
+# Replace placeholders with your actual values
+
+workflows:
+  # iOS App Store Release
+  ios-release:
+    name: iOS App Store Release
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.example.myapp  # Your bundle ID
+      groups:
+        - ios_credentials  # Configure in Codemagic dashboard
+      vars:
+        BUNDLE_ID: com.example.myapp
+        APP_NAME: My App
+      node: 18
+      xcode: latest
+      cocoapods: default
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+      tag_patterns:
+        - pattern: 'v*-ios'
+          include: true
+
+    scripts:
+      - name: Install dependencies
+        script: npm ci
+
+      - name: Sync Capacitor
+        script: npx cap sync ios
+
+      - name: Install CocoaPods
+        script: |
+          cd ios/App
+          pod install
+
+      - name: Set up code signing
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+          keychain add-certificates
+
+      - name: Increment build number
+        script: |
+          cd ios/App
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$BUNDLE_ID" || echo "0")
+          agvtool new-version -all $((LATEST + 1))
+
+      - name: Build IPA
+        script: |
+          cd ios/App
+          xcode-project build-ipa \
+            --workspace App.xcworkspace \
+            --scheme App
+
+    artifacts:
+      - ios/App/build/ios/ipa/*.ipa
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+
+  # Android Play Store Release
+  android-release:
+    name: Android Play Store Release
+    max_build_duration: 30
+    instance_type: linux_x2
+
+    environment:
+      android_signing:
+        - myapp_keystore  # Configure in Codemagic dashboard
+      groups:
+        - android_credentials
+      vars:
+        PACKAGE_NAME: com.example.myapp
+      node: 18
+      java: 17
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+      tag_patterns:
+        - pattern: 'v*-android'
+          include: true
+
+    scripts:
+      - name: Install dependencies
+        script: npm ci
+
+      - name: Sync Capacitor
+        script: npx cap sync android
+
+      - name: Build AAB
+        script: |
+          cd android
+          ./gradlew bundleRelease
+
+    artifacts:
+      - android/app/build/outputs/**/*.aab
+
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal  # Options: internal, alpha, beta, production
