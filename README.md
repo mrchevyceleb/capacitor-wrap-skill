@@ -194,3 +194,39 @@ MIT License - see [LICENSE](LICENSE) for details.
 ## Credits
 
 Created for use with [Claude Code](https://claude.ai/code) by Anthropic.
+
+## Troubleshooting
+
+Encountering issues with iOS deployment? We've documented solutions from real-world deployment experience:
+
+### Documentation
+
+- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Comprehensive troubleshooting guide
+  - Code signing conflicts and certificate management
+  - Build number conflicts
+  - App icon requirements
+  - RevenueCat Capacitor 8 compatibility
+  - Complete working workflow examples
+  - Common error messages and solutions
+
+- **[IOS_DEPLOYMENT_LEARNINGS.md](IOS_DEPLOYMENT_LEARNINGS.md)** - Real-world deployment learnings
+  - Timeline of issues encountered and resolved
+  - Battle-tested workflow configuration
+  - One-time setup checklist
+  - Key takeaways and best practices
+
+### Quick Solutions
+
+| Error | Solution |
+|-------|----------|
+| "Cannot save Signing Certificates" | Remove `ios_signing` block from environment section |
+| Duplicate build numbers | Use timestamp-based build numbers |
+| App icon errors | Verify 1024x1024 icon has `"idiom": "ios-marketing"` |
+| RevenueCat compatibility | Use base package only (not UI package) |
+| Certificate limit reached | Reuse certificate key via env var |
+
+See the full guides for detailed explanations and complete solutions.
+
+---
+
+**Last Updated:** January 2026 with real-world iOS deployment learnings
