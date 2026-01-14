@@ -50,13 +50,18 @@ Or invoke directly:
 ```
 
 The skill will guide you through:
-1. Gathering app details (name, bundle ID, colors)
+1. Gathering app details (name, iOS bundle ID, Android package name, colors)
 2. Installing Capacitor dependencies
 3. Generating icons and splash screens
-4. Configuring native platforms
+4. Configuring native platforms with separate bundle identifiers
 5. Setting up RevenueCat (optional)
 6. Creating build configurations
 7. Generating store listing documentation
+
+**Important**: The skill now properly handles separate bundle IDs for iOS and Android:
+- iOS uses bundle ID (e.g., `app.company.appname` or `ai.carouselcards.app`)
+- Android uses package name (e.g., `com.company.appname`)
+- These identifiers are PERMANENT and cannot be changed after app store submission
 
 ## What Gets Created
 
@@ -78,12 +83,13 @@ The skill will guide you through:
 ## Prerequisites
 
 ### For the skill to work:
-- Node.js 18+
+- Node.js 22+ (Capacitor 8 requirement)
 - An existing web app (hosted URL or PWA)
 - App icon (at least 512x512 PNG)
+- iOS bundle ID and Android package name (permanent identifiers)
 
 ### For Android builds:
-- JDK 17+
+- JDK 21 (Capacitor 8 requirement)
 - Android Studio
 
 ### For iOS builds:
@@ -147,11 +153,14 @@ When you enable RevenueCat integration, the skill creates:
 
 After running the skill, you'll need to:
 1. Create a RevenueCat account at [app.revenuecat.com](https://app.revenuecat.com)
-2. Add your iOS and Android apps
-3. Create entitlements (e.g., `pro`, `elite`)
-4. Copy your API keys to the generated service file
-5. Set up products in App Store Connect and Google Play Console
-6. Configure the webhook URL in RevenueCat
+2. Add your iOS app with iOS bundle ID
+3. Add your Android app with Android package name
+4. Create entitlements (e.g., `pro`, `elite`)
+5. Copy your platform-specific API keys to the generated service file
+6. Set up products in App Store Connect and Google Play Console
+7. Configure the webhook URL in RevenueCat
+
+**Note**: RevenueCat requires separate app entries for iOS and Android with their respective bundle identifiers.
 
 ## Store Listing
 
@@ -229,4 +238,4 @@ See the full guides for detailed explanations and complete solutions.
 
 ---
 
-**Last Updated:** January 2026 with real-world iOS deployment learnings
+**Last Updated:** January 2026 - Added support for separate iOS bundle ID and Android package name configuration

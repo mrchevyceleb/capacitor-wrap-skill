@@ -78,9 +78,31 @@ Ask the user for:
 
 1. **App URL**: The web app URL to wrap (e.g., `https://myapp.com`)
 2. **App Name**: Display name (e.g., "My App")
-3. **Bundle ID**: Unique identifier (e.g., `com.company.myapp`)
-4. **Theme Colors**: Primary and accent colors (hex values)
-5. **RevenueCat**: Whether to integrate subscriptions
+3. **iOS Bundle ID**: Unique identifier for iOS (e.g., `app.company.appname` or `com.company.ios`)
+4. **Android Package Name**: Unique identifier for Android (e.g., `com.company.appname`)
+5. **Theme Colors**: Primary and accent colors (hex values)
+6. **RevenueCat**: Whether to integrate subscriptions
+
+**CRITICAL: Bundle ID Best Practices**
+
+iOS and Android use different bundle identifier conventions and they CAN (and often SHOULD) be different:
+
+- **iOS Bundle ID**: Apple convention often uses `app.company.appname` or `com.company.appname`
+  - Examples: `app.carousel.ios`, `ai.carouselcards.app`
+- **Android Package Name**: Must use reverse domain notation (e.g., `com.company.appname`)
+  - Examples: `com.carouselcards.app`, `com.company.myapp`
+
+**WARNING: Bundle IDs are PERMANENT**
+- Once you publish an app to the App Store or Google Play, the bundle ID cannot be changed
+- Changing it would require creating a completely new app listing
+- All users, reviews, and ratings would be lost
+- Choose carefully - you're committing to this forever
+
+**Why Separate Bundle IDs?**
+- Platform-specific naming conventions (iOS often uses `app.*`, Android typically `com.*`)
+- Different teams or developers may manage each platform
+- Allows platform-specific analytics and tracking
+- Prevents conflicts when both platforms use the same identifier format
 
 ### Phase 2: Install Dependencies
 
@@ -104,7 +126,9 @@ Create `capacitor.config.ts`:
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: "{{BUNDLE_ID}}",
+  // NOTE: The appId in capacitor.config.ts is used as the DEFAULT for both platforms
+  // We'll set the Android package name here, then override iOS bundle ID in Xcode
+  appId: "{{ANDROID_PACKAGE_NAME}}",
   appName: "{{APP_NAME}}",
   webDir: "out",
   server: {
@@ -130,6 +154,10 @@ const config: CapacitorConfig = {
 
 export default config;
 ```
+
+**Important:** The `appId` field in capacitor.config.ts serves as the default for both platforms. However:
+- Android will use this value from capacitor.config.ts (but should also be explicitly set in build.gradle)
+- iOS bundle ID must be set separately in Xcode project settings (see Phase 8)
 
 ### Phase 4: Add Native Platforms
 
@@ -172,6 +200,46 @@ npx capacitor-assets generate --android --ios
 chmod +x android/gradlew
 ```
 
+#### 6.1: Set Android Package Name
+
+**CRITICAL:** Android requires the package name to be set in multiple places for proper configuration.
+
+Update `android/app/build.gradle` - find the `android { }` block and add/update:
+
+```groovy
+android {
+    namespace "{{ANDROID_PACKAGE_NAME}}"
+    compileSdkVersion rootProject.ext.compileSdkVersion
+
+    defaultConfig {
+        applicationId "{{ANDROID_PACKAGE_NAME}}"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+    }
+    // ... rest of config
+}
+```
+
+**Key fields:**
+- `namespace`: The package namespace for your app (REQUIRED in modern Android/Gradle)
+- `applicationId`: The unique package identifier (this is what appears in Google Play)
+
+Update `android/app/src/main/res/values/strings.xml`:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">{{APP_NAME}}</string>
+    <string name="title_activity_main">{{APP_NAME}}</string>
+    <string name="package_name">{{ANDROID_PACKAGE_NAME}}</string>
+    <string name="custom_url_scheme">{{ANDROID_PACKAGE_NAME}}</string>
+</resources>
+```
+
+#### 6.2: Configure Theme Colors
+
 Update `android/app/src/main/res/values/colors.xml`:
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -181,6 +249,8 @@ Update `android/app/src/main/res/values/colors.xml`:
     <color name="colorAccent">{{ACCENT_COLOR}}</color>
 </resources>
 ```
+
+#### 6.3: Update AndroidManifest.xml
 
 Update `AndroidManifest.xml` with:
 - Deep links for app URL
@@ -319,7 +389,54 @@ export async function initializeRevenueCat(userId?: string) {
 - **Use `.xcodeproj`** - NOT `.xcworkspace`
 - **Must resolve SPM dependencies** before building
 
-#### Manual Build (macOS):
+#### 8.1: Set iOS Bundle ID in Xcode
+
+**CRITICAL:** The iOS bundle ID must be set manually in Xcode - it cannot be fully configured from capacitor.config.ts alone.
+
+After running `npx cap add ios`, you MUST set the bundle ID in Xcode:
+
+1. Navigate to the iOS project:
+```bash
+cd ios/App
+```
+
+2. Resolve Swift Package Manager dependencies:
+```bash
+xcodebuild -resolvePackageDependencies -project App.xcodeproj -scheme App
+```
+
+3. Open the project in Xcode:
+```bash
+open App.xcodeproj
+```
+
+4. **Set the Bundle Identifier:**
+   - In Xcode, select the **App** project in the left sidebar
+   - Select the **App** target under TARGETS
+   - Go to the **General** tab
+   - Find **Identity** section
+   - Change **Bundle Identifier** from the default to your iOS bundle ID: `{{IOS_BUNDLE_ID}}`
+   - Example: `app.carousel.ios` or `ai.carouselcards.app`
+
+5. **Verify in Build Settings (optional but recommended):**
+   - Go to the **Build Settings** tab
+   - Search for "Product Bundle Identifier"
+   - Confirm it shows your iOS bundle ID
+
+**Alternative: Command Line (for automation):**
+```bash
+# Update the project.pbxproj file with your iOS bundle ID
+# This can be done in a script if automating the process
+sed -i '' 's/PRODUCT_BUNDLE_IDENTIFIER = .*/PRODUCT_BUNDLE_IDENTIFIER = {{IOS_BUNDLE_ID}};/g' ios/App/App.xcodeproj/project.pbxproj
+```
+
+**IMPORTANT NOTES:**
+- The bundle ID in Xcode may initially match capacitor.config.ts `appId`
+- You MUST change it manually to use your separate iOS bundle ID
+- This is a one-time configuration - subsequent `npx cap sync` won't overwrite it
+- The iOS bundle ID and Android package name can now be completely different
+
+#### 8.2: Manual Build (macOS):
 ```bash
 # Navigate to iOS project
 cd ios/App
@@ -331,7 +448,10 @@ xcodebuild -resolvePackageDependencies -project App.xcodeproj -scheme App
 open App.xcodeproj
 ```
 
-#### Codemagic Build Script:
+#### 8.3: Codemagic Build Script
+
+**IMPORTANT:** Use your iOS bundle ID (not Android package name) in the Codemagic workflow.
+
 ```yaml
 ios-app:
   name: iOS App Store
@@ -342,9 +462,9 @@ ios-app:
   environment:
     ios_signing:
       distribution_type: app_store
-      bundle_identifier: "{{BUNDLE_ID}}"
+      bundle_identifier: "{{IOS_BUNDLE_ID}}"  # Use iOS bundle ID, not Android package name
     vars:
-      BUNDLE_ID: "{{BUNDLE_ID}}"
+      BUNDLE_ID: "{{IOS_BUNDLE_ID}}"  # iOS bundle ID for signing
       XCODE_SCHEME: "App"
       XCODE_PROJECT: "ios/App/App.xcodeproj"  # Use .xcodeproj NOT .xcworkspace!
     node: 22  # Capacitor 8 requires Node 22
@@ -524,17 +644,17 @@ Before submitting to app stores, complete these steps:
 
 ### Apple App Store
 
-1. **Register Bundle ID in Apple Developer Portal**
+1. **Register iOS Bundle ID in Apple Developer Portal**
    - Go to Certificates, Identifiers & Profiles > Identifiers
    - Click + to add a new identifier
    - Select App IDs, then App
-   - Enter description and Bundle ID (e.g., `ai.carouselcards.app`)
-   - Enable any required capabilities (Push Notifications, etc.)
+   - Enter description and your iOS Bundle ID: `{{IOS_BUNDLE_ID}}` (e.g., `app.carousel.ios` or `ai.carouselcards.app`)
+   - Enable any required capabilities (Push Notifications, In-App Purchase if using RevenueCat, etc.)
 
 2. **Create App in App Store Connect**
    - Go to Apps > + (New App)
    - Select iOS platform
-   - Enter app name, bundle ID, and SKU
+   - Enter app name, iOS bundle ID, and SKU
    - Set primary language
 
 3. **Set Up App Store Connect API Integration in Codemagic**
@@ -550,7 +670,7 @@ Before submitting to app stores, complete these steps:
 
 5. **RevenueCat Setup (if using)**
    - Create app in RevenueCat dashboard
-   - Add iOS app with bundle ID
+   - Add iOS app with your iOS bundle ID: `{{IOS_BUNDLE_ID}}`
    - Get public API key for iOS
    - Set up products in App Store Connect first
    - Import products into RevenueCat
@@ -560,15 +680,21 @@ Before submitting to app stores, complete these steps:
 1. **Create App in Google Play Console**
    - Go to All apps > Create app
    - Fill in app details
+   - Use your Android package name: `{{ANDROID_PACKAGE_NAME}}`
 
 2. **Set Up Signing**
    - Generate keystore (see Phase 6.5)
    - Consider enrolling in Google Play App Signing
 
 3. **RevenueCat Setup (if using)**
-   - Add Android app in RevenueCat with package name
-   - Get public API key for Android
+   - Add Android app in RevenueCat with your Android package name: `{{ANDROID_PACKAGE_NAME}}`
+   - Get public API key for Android (separate from iOS key)
    - Link Google Play service account for server notifications
+
+**NOTE:** RevenueCat requires separate app entries for iOS and Android, each with their respective bundle identifiers. Make sure to:
+- Use iOS bundle ID for the iOS app in RevenueCat
+- Use Android package name for the Android app in RevenueCat
+- Store both API keys separately in your environment variables
 
 ### Environment Variables
 
@@ -673,19 +799,22 @@ Add explicit code signing commands:
 User: "I want to wrap my fitness app at https://fitapp.com for the app stores"
 
 Assistant will:
-1. Ask for app name, bundle ID, colors, RevenueCat preference
-2. Install all Capacitor dependencies
-3. Create configuration for https://fitapp.com
-4. Generate icons from existing assets
-5. Configure Android with dark theme
-6. Set up Codemagic for iOS builds (using SPM, not CocoaPods)
-7. Create store listing guide with copy-paste text
-8. Provide build commands for the user's platform
+1. Ask for app name, iOS bundle ID, Android package name, colors, RevenueCat preference
+2. Explain bundle ID best practices and permanence warning
+3. Install all Capacitor dependencies
+4. Create configuration for https://fitapp.com with Android package name in capacitor.config.ts
+5. Generate icons from existing assets
+6. Configure Android with explicit package name in build.gradle and strings.xml
+7. Provide instructions to set iOS bundle ID manually in Xcode
+8. Set up Codemagic for iOS builds (using iOS bundle ID, SPM, not CocoaPods)
+9. Create store listing guide with copy-paste text and correct bundle IDs
+10. Provide build commands for the user's platform
 
 ## Version History
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.1 | Jan 2026 | Added support for separate iOS bundle ID and Android package name, explicit configuration in Xcode and build.gradle, bundle ID best practices documentation |
 | 2.0 | Jan 2026 | Capacitor 8 support, SPM instead of CocoaPods, Node 22 requirement, Java 21 requirement, RevenueCat compatibility fixes |
 | 1.0 | 2024 | Initial release for Capacitor 7 |
 
@@ -699,3 +828,7 @@ Assistant will:
 - For iOS, recommend Codemagic if not on macOS
 - **Capacitor 8 uses SPM, not CocoaPods** - use `.xcodeproj`, not `.xcworkspace`
 - **Only use `@revenuecat/purchases-capacitor`** - the UI package is not Capacitor 8 compatible
+- **iOS and Android can have different bundle IDs** - prompt for both separately and configure them independently
+- **Bundle IDs are permanent** - warn users that they cannot be changed after app store submission
+- **Android package name** must be set in build.gradle (`namespace` and `applicationId`) and strings.xml
+- **iOS bundle ID** must be set manually in Xcode after running `npx cap add ios`

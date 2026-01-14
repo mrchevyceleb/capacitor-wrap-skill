@@ -3,9 +3,16 @@ import type { CapacitorConfig } from "@capacitor/cli";
 /**
  * Example Capacitor configuration for wrapping a web app
  * Replace placeholders with your actual values
+ *
+ * IMPORTANT: iOS and Android Bundle IDs
+ * - The appId here serves as the DEFAULT and should be set to your Android package name
+ * - Android will use this value (also set it explicitly in android/app/build.gradle)
+ * - iOS bundle ID must be set separately in Xcode (see SKILL.md Phase 8.1)
+ * - iOS and Android can have DIFFERENT bundle identifiers
  */
 const config: CapacitorConfig = {
-  // Your unique app identifier (e.g., com.company.appname)
+  // Your Android package name (e.g., com.company.appname)
+  // This serves as the default appId for both platforms, but iOS will be overridden in Xcode
   appId: "com.example.myapp",
 
   // Display name shown under the app icon
