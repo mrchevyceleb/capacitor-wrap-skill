@@ -862,7 +862,11 @@ Copy the screenshot generator to `scripts/generate-app-screenshots.mjs` (see exa
 
 The script automatically generates:
 - **iOS Screenshots**: 6.9" iPhone (mandatory), 6.7" iPhone, 6.5" iPhone, 5.5" iPhone, 13" iPad Pro (mandatory), 12.9" iPad Pro
-- **Android Screenshots**: Phone portrait (1080x1920, 1440x2560), phone landscape (1920x1080), tablet 7" and 10" portrait
+- **Android Phone Screenshots**: 1080x1920 (recommended), 1440x2560 (HD) - saved to `screenshots/android/phone/`
+- **Android 7" Tablet Screenshots**: 1200x1920 - saved to `screenshots/android/tablet-7/` (optional)
+- **Android 10" Tablet Screenshots**: 1600x2560 - saved to `screenshots/android/tablet-10/` (optional)
+
+**Note:** The script now creates separate subdirectories for Android phone and tablet screenshots to match Google Play Store requirements.
 
 #### 9.3: Customize Screenshot Scenarios
 
@@ -914,7 +918,9 @@ APP_URL=http://localhost:4173 node scripts/generate-app-screenshots.mjs
 
 **Output:**
 - `screenshots/ios/` - iOS App Store screenshots (6 sizes x number of scenarios)
-- `screenshots/android/` - Google Play screenshots (5 sizes x number of scenarios)
+- `screenshots/android/phone/` - Google Play phone screenshots (2 sizes x number of scenarios)
+- `screenshots/android/tablet-7/` - Google Play 7" tablet screenshots (1 size x number of scenarios, optional)
+- `screenshots/android/tablet-10/` - Google Play 10" tablet screenshots (1 size x number of scenarios, optional)
 
 **Add to `.gitignore`:**
 ```gitignore
@@ -922,7 +928,56 @@ APP_URL=http://localhost:4173 node scripts/generate-app-screenshots.mjs
 screenshots/
 ```
 
-#### 9.5: App Store Screenshot Requirements (2026)
+#### 9.5: Generate Android Feature Graphic (REQUIRED)
+
+Google Play Store **REQUIRES** a feature graphic (1024 x 500 px banner) that appears at the top of your store listing.
+
+**Create the feature graphic generator:**
+
+Copy `examples/generate-feature-graphic.mjs` to `scripts/generate-feature-graphic.mjs` and customize:
+
+```javascript
+const CONFIG = {
+  // App branding - UPDATE THESE
+  appName: 'Your App Name',
+  tagline: 'Your App Tagline',
+
+  // Brand colors - UPDATE THESE
+  colors: {
+    gradientStart: '#37B5B6',  // Left side of gradient
+    gradientEnd: '#F47C74',     // Right side of gradient
+    textColor: '#FFFFFF',       // Text color
+  },
+
+  // Logo path - point to your app icon or logo
+  logoPath: join(projectRoot, 'public', 'icons', 'icon-512x512.png'),
+};
+```
+
+**Generate the feature graphic:**
+
+```bash
+node scripts/generate-feature-graphic.mjs
+```
+
+**Output:**
+- `screenshots/android/feature-graphic.png` (1024 x 500 px)
+
+**Requirements:**
+- Exact dimensions: 1024 x 500 px (MANDATORY)
+- Format: PNG or JPEG
+- Max size: 15MB
+- This graphic is REQUIRED for Google Play Store submission
+- It appears prominently at the top of your store listing
+
+**Design Tips:**
+- Use high contrast text for readability
+- Include your app logo, name, and a short tagline
+- Use your brand colors for consistency
+- Keep important content centered (edges may be cropped on some devices)
+- Test in Google Play Console preview before finalizing
+
+#### 9.6: App Store Screenshot Requirements (2026)
 
 **Apple App Store:**
 - **Mandatory:** 6.9" iPhone (1320x2868) and 13" iPad (2064x2752)
@@ -931,10 +986,21 @@ screenshots/
 - Quantity: 1-10 screenshots per device size
 
 **Google Play Store:**
-- **Minimum:** 2 screenshots at 1080x1920 (portrait) or 1920x1080 (landscape)
-- **Recommended:** 4-8 screenshots showing key features
-- Dimensions: Min 320px, max 3840px (max dimension ≤ 2× min dimension)
-- Format: 24-bit PNG or JPEG, no alpha, max 8MB per file
+- **Phone Screenshots (REQUIRED):**
+  - Minimum: 2 screenshots
+  - Maximum: 8 screenshots
+  - Recommended dimensions: 1080x1920 (9:16 aspect ratio)
+  - For promotion eligibility: 4+ screenshots at 1080px minimum
+  - Format: PNG or JPEG, max 8MB per file
+- **Feature Graphic (REQUIRED):**
+  - Exact dimensions: 1024 x 500 px (MANDATORY)
+  - Format: PNG or JPEG, max 15MB
+  - This banner appears at the top of your store listing
+  - Use the feature graphic generator (see Phase 9.5 above)
+- **Tablet Screenshots (OPTIONAL but recommended):**
+  - 7-inch tablet: 1200x1920 (2-8 screenshots)
+  - 10-inch tablet: 1600x2560 (2-8 screenshots)
+  - Improves discoverability on tablets
 
 **Pro Tips:**
 - Capture real user flows, not just static screens
@@ -972,9 +1038,13 @@ Create comprehensive guide including:
 | `codemagic.yaml` | iOS/Android CI/CD config |
 | `docs/APP_STORE_GUIDE.md` | Store submission guide |
 | `scripts/generate-app-icons.mjs` | Icon generation script |
-| `scripts/generate-app-screenshots.mjs` | **NEW:** Automated screenshot generator |
+| `scripts/generate-app-screenshots.mjs` | **NEW:** Automated screenshot generator for iOS & Android |
+| `scripts/generate-feature-graphic.mjs` | **NEW:** Android feature graphic generator (1024x500 REQUIRED) |
 | `screenshots/ios/*.png` | **NEW:** iOS App Store screenshots (6 sizes per scenario) |
-| `screenshots/android/*.png` | **NEW:** Android Play Store screenshots (5 sizes per scenario) |
+| `screenshots/android/phone/*.png` | **NEW:** Android phone screenshots (1080x1920, 1440x2560) |
+| `screenshots/android/tablet-7/*.png` | **NEW:** Android 7" tablet screenshots (1200x1920, optional) |
+| `screenshots/android/tablet-10/*.png` | **NEW:** Android 10" tablet screenshots (1600x2560, optional) |
+| `screenshots/android/feature-graphic.png` | **NEW:** Android feature graphic (1024x500 REQUIRED) |
 | `android-signing/{{APP_NAME_LOWER}}-release.keystore` | Release signing key (DO NOT COMMIT) |
 | `android-signing/CREDENTIALS.txt` | Keystore passwords (DO NOT COMMIT) |
 | `android-signing/SETUP-INSTRUCTIONS.md` | Step-by-step Codemagic/Google Play guide |
@@ -1217,6 +1287,7 @@ Assistant will:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.4 | Jan 2026 | **NEW:** Android feature graphic generator (1024x500 REQUIRED for Play Store), improved screenshot organization (separate phone/tablet-7/tablet-10 directories), updated Play Store requirements documentation with feature graphic as mandatory asset |
 | 2.3 | Jan 2026 | **NEW:** Automated screenshot generation for both iOS and Android app stores using Playwright, generates all required screenshot sizes (6.9" iPhone, 13" iPad Pro mandatory for iOS 2026), customizable scenarios for capturing key app screens |
 | 2.2 | Jan 2026 | Automated Android keystore generation with secure passwords, added android-signing/ folder structure, CREDENTIALS.txt and SETUP-INSTRUCTIONS.md auto-generation, comprehensive Codemagic/Google Play setup guide |
 | 2.1 | Jan 2026 | Added support for separate iOS bundle ID and Android package name, explicit configuration in Xcode and build.gradle, bundle ID best practices documentation |

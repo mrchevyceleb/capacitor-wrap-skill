@@ -17,6 +17,7 @@ A Claude Code skill that wraps any web app in Capacitor for iOS and Android app 
 - **Automated keystore generation**: Secure Android signing with auto-generated credentials
 - **Icon generation**: Creates all required app store icon sizes from a single source
 - **Screenshot automation**: Automated Playwright-based screenshot generation for iOS and Android
+- **Feature graphic generator**: Automated creation of Android Play Store feature graphic (1024x500 REQUIRED)
 - **RevenueCat integration**: Optional in-app subscription support
 - **Cross-platform builds**: Works on Windows and macOS
 - **CodeMagic CI/CD**: Optional advanced configuration (for experienced developers)
@@ -89,8 +90,12 @@ The skill will guide you through:
 | `docs/APP_STORE_GUIDE.md` | Store submission guide |
 | `scripts/generate-app-icons.mjs` | Icon generation script |
 | `scripts/generate-app-screenshots.mjs` | **NEW:** Automated screenshot generator |
+| `scripts/generate-feature-graphic.mjs` | **NEW:** Android feature graphic generator (1024x500) |
 | `screenshots/ios/*.png` | **NEW:** iOS App Store screenshots |
-| `screenshots/android/*.png` | **NEW:** Android Play Store screenshots |
+| `screenshots/android/phone/*.png` | **NEW:** Android phone screenshots (REQUIRED) |
+| `screenshots/android/tablet-7/*.png` | **NEW:** Android 7" tablet screenshots (optional) |
+| `screenshots/android/tablet-10/*.png` | **NEW:** Android 10" tablet screenshots (optional) |
+| `screenshots/android/feature-graphic.png` | **NEW:** Android feature graphic (REQUIRED) |
 | `android/` | Android native project |
 | `android-signing/` | **Android signing folder** (DO NOT COMMIT) |
 | `android-signing/*.keystore` | Auto-generated release signing key |
@@ -198,10 +203,9 @@ node scripts/generate-app-screenshots.mjs
 - 12.9" iPad Pro (2048x2732)
 
 **Android Screenshots:**
-- Phone portrait: 1080x1920, 1440x2560
-- Phone landscape: 1920x1080
-- Tablet 7": 1200x1920
-- Tablet 10": 1600x2560
+- Phone portrait: 1080x1920 (recommended), 1440x2560 - saved to `screenshots/android/phone/`
+- Tablet 7": 1200x1920 - saved to `screenshots/android/tablet-7/` (optional)
+- Tablet 10": 1600x2560 - saved to `screenshots/android/tablet-10/` (optional)
 
 ### Customization
 
@@ -241,9 +245,26 @@ scenarios: [
 - PNG or JPEG, 72 DPI, no transparency
 
 **Google Play Store:**
-- Minimum: 2 screenshots (1080x1920 or higher)
-- Recommended: 4-8 screenshots
-- 24-bit PNG or JPEG, max 8MB
+- Phone screenshots (REQUIRED): Minimum 2, maximum 8 (1080x1920 recommended)
+- Feature graphic (REQUIRED): 1024 x 500 px banner
+- Tablet screenshots (OPTIONAL): 7" and 10" tablet sizes
+- Format: PNG or JPEG, max 8MB per screenshot, max 15MB for feature graphic
+
+### Feature Graphic Generation (NEW in v2.4)
+
+Android Play Store REQUIRES a 1024 x 500 px feature graphic. Generate it automatically:
+
+```bash
+# Generate feature graphic
+node scripts/generate-feature-graphic.mjs
+```
+
+Edit `scripts/generate-feature-graphic.mjs` to customize:
+- App name and tagline
+- Brand colors for gradient
+- Logo path
+
+Output: `screenshots/android/feature-graphic.png`
 
 ## RevenueCat Setup
 
@@ -347,4 +368,4 @@ See the full guides for detailed explanations and complete solutions.
 
 ---
 
-**Last Updated:** January 2026 (v2.3) - Added automated screenshot generation for iOS and Android app stores with Playwright, supporting all required 2026 dimensions including mandatory 6.9" iPhone and 13" iPad Pro
+**Last Updated:** January 2026 (v2.4) - Added Android feature graphic generator (1024x500 REQUIRED), improved screenshot organization with separate phone/tablet directories, updated Play Store documentation with feature graphic as mandatory asset

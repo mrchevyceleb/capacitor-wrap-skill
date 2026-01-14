@@ -28,6 +28,9 @@ const CONFIG = {
   outputDir: 'screenshots',
   iosDir: 'screenshots/ios',
   androidDir: 'screenshots/android',
+  androidPhoneDir: 'screenshots/android/phone',
+  androidTablet7Dir: 'screenshots/android/tablet-7',
+  androidTablet10Dir: 'screenshots/android/tablet-10',
 
   // Screenshot scenarios - customize these for your app's key screens
   scenarios: [
@@ -75,20 +78,35 @@ const IOS_SIZES = [
 ];
 
 // Google Play Store screenshot dimensions (2026 requirements)
-// Minimum 2 screenshots, up to 8 allowed
-const ANDROID_SIZES = [
-  { name: 'phone-portrait', width: 1080, height: 1920, label: 'Phone Portrait (16:9)' },
-  { name: 'phone-portrait-hd', width: 1440, height: 2560, label: 'Phone Portrait HD' },
-  { name: 'phone-landscape', width: 1920, height: 1080, label: 'Phone Landscape (16:9)' },
-  { name: 'tablet-portrait', width: 1200, height: 1920, label: 'Tablet 7" Portrait' },
-  { name: 'tablet-portrait-10', width: 1600, height: 2560, label: 'Tablet 10" Portrait' },
+// Minimum 2 screenshots, up to 8 allowed per category
+// Phone screenshots are REQUIRED. Tablet screenshots are OPTIONAL.
+const ANDROID_PHONE_SIZES = [
+  { name: '1080x1920', width: 1080, height: 1920, label: 'Phone (1080x1920 - Recommended)', dir: 'phone' },
+  { name: '1440x2560', width: 1440, height: 2560, label: 'Phone HD (1440x2560)', dir: 'phone' },
+];
+
+const ANDROID_TABLET_7_SIZES = [
+  { name: '1200x1920', width: 1200, height: 1920, label: '7" Tablet (1200x1920)', dir: 'tablet-7' },
+];
+
+const ANDROID_TABLET_10_SIZES = [
+  { name: '1600x2560', width: 1600, height: 2560, label: '10" Tablet (1600x2560)', dir: 'tablet-10' },
 ];
 
 /**
  * Create output directories if they don't exist
  */
 function setupDirectories() {
-  [CONFIG.outputDir, CONFIG.iosDir, CONFIG.androidDir].forEach(dir => {
+  const dirs = [
+    CONFIG.outputDir,
+    CONFIG.iosDir,
+    CONFIG.androidDir,
+    CONFIG.androidPhoneDir,
+    CONFIG.androidTablet7Dir,
+    CONFIG.androidTablet10Dir
+  ];
+
+  dirs.forEach(dir => {
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });
       console.log(`✅ Created directory: ${dir}`);
@@ -99,10 +117,20 @@ function setupDirectories() {
 /**
  * Generate screenshots for a specific platform
  */
-async function generateScreenshots(browser, platform, sizes) {
-  console.log(`\n📱 Generating ${platform} screenshots...\n`);
+async function generateScreenshots(browser, platform, sizes, subDir = null) {
+  const label = subDir ? `${platform} (${subDir})` : platform;
+  console.log(`\n📱 Generating ${label} screenshots...\n`);
 
-  const outputDir = platform === 'iOS' ? CONFIG.iosDir : CONFIG.androidDir;
+  let outputDir;
+  if (platform === 'iOS') {
+    outputDir = CONFIG.iosDir;
+  } else if (subDir) {
+    // Android with subdirectory (phone, tablet-7, tablet-10)
+    outputDir = join(CONFIG.androidDir, subDir);
+  } else {
+    outputDir = CONFIG.androidDir;
+  }
+
   let totalGenerated = 0;
 
   for (const scenario of CONFIG.scenarios) {
@@ -161,29 +189,38 @@ async function generateScreenshots(browser, platform, sizes) {
 /**
  * Generate summary report
  */
-function generateReport(iosCount, androidCount) {
-  console.log('\n' + '='.repeat(60));
+function generateReport(counts) {
+  const total = Object.values(counts).reduce((sum, val) => sum + val, 0);
+
+  console.log('\n' + '='.repeat(70));
   console.log('📊 Screenshot Generation Summary');
-  console.log('='.repeat(60));
-  console.log(`\n📱 iOS Screenshots: ${iosCount}`);
+  console.log('='.repeat(70));
+  console.log(`\n📱 iOS Screenshots: ${counts.ios}`);
   console.log(`   Location: ${CONFIG.iosDir}/`);
   console.log(`   Required: At least 1 x 6.9" iPhone + 1 x 13" iPad`);
-  console.log(`\n🤖 Android Screenshots: ${androidCount}`);
-  console.log(`   Location: ${CONFIG.androidDir}/`);
-  console.log(`   Required: Minimum 2 screenshots (1080x1920 or higher)`);
-  console.log(`\n✅ Total Screenshots: ${iosCount + androidCount}`);
-  console.log('\n' + '='.repeat(60));
+  console.log(`\n🤖 Android Phone Screenshots: ${counts.androidPhone} (REQUIRED)`);
+  console.log(`   Location: ${CONFIG.androidPhoneDir}/`);
+  console.log(`   Required: Minimum 2, maximum 8 screenshots (1080x1920 recommended)`);
+  console.log(`\n📱 Android 7" Tablet Screenshots: ${counts.androidTablet7} (optional)`);
+  console.log(`   Location: ${CONFIG.androidTablet7Dir}/`);
+  console.log(`\n📱 Android 10" Tablet Screenshots: ${counts.androidTablet10} (optional)`);
+  console.log(`   Location: ${CONFIG.androidTablet10Dir}/`);
+  console.log(`\n✅ Total Screenshots: ${total}`);
+  console.log('\n' + '='.repeat(70));
   console.log('\n📝 Next Steps:');
   console.log('   1. Review generated screenshots in the directories above');
-  console.log('   2. Customize scenarios in this script for your app\'s screens');
+  console.log('   2. Generate feature graphic for Android (1024x500) - REQUIRED');
+  console.log('      Run: node scripts/generate-feature-graphic.mjs');
   console.log('   3. Upload to App Store Connect (iOS) and Google Play Console (Android)');
   console.log('   4. Add captions/localization in respective consoles');
   console.log('\n💡 Tips:');
   console.log('   - iOS: Provide 6.9" iPhone and 13" iPad (mandatory in 2026)');
-  console.log('   - Android: Minimum 2, maximum 8 screenshots per language');
+  console.log('   - Android Phone: REQUIRED - minimum 2, maximum 8 screenshots');
+  console.log('   - Android Feature Graphic: REQUIRED - 1024 x 500 px banner');
+  console.log('   - Android Tablets: OPTIONAL - but recommended for better discovery');
   console.log('   - Use high-quality, engaging screenshots showing key features');
   console.log('   - Consider adding text overlays for context (optional)');
-  console.log('\n' + '='.repeat(60) + '\n');
+  console.log('\n' + '='.repeat(70) + '\n');
 }
 
 /**
@@ -194,7 +231,9 @@ async function main() {
   console.log(`   App URL: ${CONFIG.appUrl}`);
   console.log(`   Scenarios: ${CONFIG.scenarios.length}`);
   console.log(`   iOS Sizes: ${IOS_SIZES.length}`);
-  console.log(`   Android Sizes: ${ANDROID_SIZES.length}`);
+  console.log(`   Android Phone Sizes: ${ANDROID_PHONE_SIZES.length}`);
+  console.log(`   Android 7" Tablet Sizes: ${ANDROID_TABLET_7_SIZES.length}`);
+  console.log(`   Android 10" Tablet Sizes: ${ANDROID_TABLET_10_SIZES.length}`);
 
   // Setup directories
   setupDirectories();
@@ -203,15 +242,28 @@ async function main() {
   console.log('\n🌐 Launching browser...');
   const browser = await chromium.launch({ headless: true });
 
+  const counts = {
+    ios: 0,
+    androidPhone: 0,
+    androidTablet7: 0,
+    androidTablet10: 0
+  };
+
   try {
     // Generate iOS screenshots
-    const iosCount = await generateScreenshots(browser, 'iOS', IOS_SIZES);
+    counts.ios = await generateScreenshots(browser, 'iOS', IOS_SIZES);
 
-    // Generate Android screenshots
-    const androidCount = await generateScreenshots(browser, 'Android', ANDROID_SIZES);
+    // Generate Android Phone screenshots (REQUIRED)
+    counts.androidPhone = await generateScreenshots(browser, 'Android', ANDROID_PHONE_SIZES, 'phone');
+
+    // Generate Android 7" Tablet screenshots (OPTIONAL)
+    counts.androidTablet7 = await generateScreenshots(browser, 'Android', ANDROID_TABLET_7_SIZES, 'tablet-7');
+
+    // Generate Android 10" Tablet screenshots (OPTIONAL)
+    counts.androidTablet10 = await generateScreenshots(browser, 'Android', ANDROID_TABLET_10_SIZES, 'tablet-10');
 
     // Generate report
-    generateReport(iosCount, androidCount);
+    generateReport(counts);
 
   } catch (error) {
     console.error('\n❌ Fatal error:', error);
