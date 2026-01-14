@@ -358,7 +358,8 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
-        submit_to_app_store: true  # Skip TestFlight, go straight to review
+        # Upload only - manual submission after metadata
+        submit_to_app_store: false
 ```
 
 ### Key Configuration Points
@@ -433,6 +434,33 @@ set -exo pipefail  # Instead of set -exuo pipefail
 **Cause:** Missing or misconfigured 1024x1024 icon.
 
 **Solution:** See [App Icon Requirements](#app-icon-requirements).
+
+### Error: "missing required attribute 'usesNonExemptEncryption'"
+
+**Full Error:**
+```
+Creating Review Submission Item failed. Please ensure that App Store Version
+Localization for your application default locale defines uses non exempt encryption
+```
+
+**Cause:** Auto-submit enabled (`submit_to_app_store: true`) but app metadata is incomplete.
+
+**Solution:** Use upload-only mode:
+```yaml
+publishing:
+  app_store_connect:
+    auth: integration
+    submit_to_app_store: false
+```
+
+Then manually submit through App Store Connect after filling in:
+- App description and screenshots
+- Encryption declaration
+- Privacy policy URL
+- Support URL
+
+**Why This Happens:**
+Auto-submit tries to send your app for review immediately, but App Store Connect requires all metadata fields to be filled in first. Upload-only mode gives you control over when to submit.
 
 ---
 

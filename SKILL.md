@@ -403,8 +403,37 @@ ios-app:
   publishing:
     app_store_connect:
       auth: integration
-      submit_to_testflight: true
+      # Upload only - allows manual submission after filling in metadata
+      # Set to true only if all app metadata is already configured
+      submit_to_app_store: false
 ```
+
+**Publishing Workflow Options:**
+
+The skill configures **upload-only mode** (`submit_to_app_store: false`) by default. This is recommended because:
+
+✅ **Pros:**
+- Builds show as successful when upload completes
+- You control when to submit for review
+- Fill in metadata (screenshots, description, privacy info) at your own pace
+- Standard workflow used by most developers
+
+❌ **Auto-Submit Mode** (`submit_to_app_store: true`):
+- Requires all metadata filled in beforehand
+- Fails if encryption declaration or other fields are missing
+- Can't update screenshots/description per build
+- Less flexible for iterative development
+
+**Post-Build Workflow (Upload-Only):**
+1. Build completes → IPA uploaded to App Store Connect ✅
+2. Go to App Store Connect dashboard
+3. Navigate to your app → Select uploaded build
+4. Fill in/update metadata:
+   - Screenshots (6.5" and 5.5" displays required)
+   - App description and keywords
+   - Privacy policy URL and support URL
+   - Encryption declaration (usually "NO" for standard apps)
+5. Click "Submit for Review" when ready
 
 ### Phase 9: Create Build Configurations
 

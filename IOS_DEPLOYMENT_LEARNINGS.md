@@ -212,6 +212,57 @@ Both Debug and Release configurations need these settings.
 
 ---
 
+### 7. Auto-Submit Failures Without Metadata
+
+**Problem:** When `submit_to_app_store: true` is enabled, builds fail with metadata errors even though the IPA uploaded successfully.
+
+**Error:**
+```
+Creating Review Submission Item failed. Please ensure that App Store Version
+Localization for your application default locale defines uses non exempt encryption
+
+Associated error: The provided entity is missing a required attribute - You must
+provide a value for the attribute 'usesNonExemptEncryption'
+```
+
+**Cause:** Codemagic attempts to automatically submit the app for review, but this requires all app metadata to be filled in:
+- App description and screenshots
+- Encryption declaration (`usesNonExemptEncryption`)
+- Privacy policy URL
+- Support URL
+- Age rating
+
+**Solution:** Use upload-only mode and submit manually.
+
+```yaml
+publishing:
+  app_store_connect:
+    auth: integration
+    submit_to_app_store: false  # Upload only
+```
+
+**Why Upload-Only is Better:**
+- ✅ Builds show as successful (not "failed" due to missing metadata)
+- ✅ You control when to submit for review
+- ✅ Fill in screenshots and descriptions at your own pace
+- ✅ Update metadata between builds without workflow changes
+- ✅ Standard workflow used by most developers
+
+**Manual Submission Steps:**
+1. Build completes → IPA uploaded to App Store Connect
+2. Go to https://appstoreconnect.apple.com
+3. Navigate to your app → Find the new build
+4. Fill in required metadata (first time only, then just update as needed)
+5. Click "Submit for Review" when ready
+
+**When to Use Auto-Submit:**
+Only use `submit_to_app_store: true` if:
+- All app metadata is already configured and stable
+- You rarely change screenshots or descriptions
+- You want fully automated submissions (rare in practice)
+
+---
+
 ## Complete Working Workflow
 
 This is the battle-tested workflow configuration that incorporates all fixes:
@@ -295,7 +346,8 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
-        submit_to_app_store: true  # Skip TestFlight
+        # Upload only - manual submission after metadata entry
+        submit_to_app_store: false
 ```
 
 ---
