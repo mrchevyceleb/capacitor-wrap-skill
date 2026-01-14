@@ -5,11 +5,12 @@ A Claude Code skill that wraps any web app in Capacitor for iOS and Android app 
 ## Features
 
 - **One-command setup**: Installs and configures Capacitor for any web app
+- **Automated keystore generation**: Secure Android signing with auto-generated credentials
 - **Icon generation**: Creates all required app store icon sizes from a single source
 - **RevenueCat integration**: Optional in-app subscription support
 - **Cross-platform builds**: Works on Windows and macOS
 - **Cloud CI/CD**: Codemagic configuration for iOS builds without a Mac
-- **Store-ready**: Generates copy-paste store listing text
+- **Store-ready**: Generates copy-paste store listing text and deployment guides
 
 ## Installation
 
@@ -54,9 +55,10 @@ The skill will guide you through:
 2. Installing Capacitor dependencies
 3. Generating icons and splash screens
 4. Configuring native platforms with separate bundle identifiers
-5. Setting up RevenueCat (optional)
-6. Creating build configurations
-7. Generating store listing documentation
+5. **Automatically generating Android keystore with secure passwords**
+6. Setting up RevenueCat (optional)
+7. Creating build configurations
+8. Generating comprehensive store listing documentation and deployment guides
 
 **Important**: The skill now properly handles separate bundle IDs for iOS and Android:
 - iOS uses bundle ID (e.g., `app.company.appname` or `ai.carouselcards.app`)
@@ -70,14 +72,16 @@ The skill will guide you through:
 | `capacitor.config.ts` | Main Capacitor configuration |
 | `public/error.html` | Offline fallback page |
 | `assets/*.png` | Source icons for generation |
-| `lib/services/revenuecat.ts` | RevenueCat integration |
-| `app/api/webhooks/revenuecat/route.ts` | Webhook handler |
+| `lib/services/revenuecat.ts` | RevenueCat integration (optional) |
+| `app/api/webhooks/revenuecat/route.ts` | Webhook handler (optional) |
 | `codemagic.yaml` | iOS/Android CI/CD config |
 | `docs/APP_STORE_GUIDE.md` | Store submission guide |
-| `docs/SECRET_INFO.md` | Keystore passwords (**DO NOT COMMIT**) |
 | `scripts/generate-app-icons.mjs` | Icon generation script |
 | `android/` | Android native project |
-| `android/*-release.keystore` | Release signing key (**DO NOT COMMIT**) |
+| `android-signing/` | **Android signing folder** (DO NOT COMMIT) |
+| `android-signing/*.keystore` | Auto-generated release signing key |
+| `android-signing/CREDENTIALS.txt` | Auto-generated passwords and setup values |
+| `android-signing/SETUP-INSTRUCTIONS.md` | Step-by-step Codemagic/Google Play guide |
 | `ios/` | iOS native project |
 
 ## Prerequisites
@@ -106,26 +110,41 @@ cd android
 
 ### Android Release (Signed for Play Store)
 
-**Important**: You must set environment variables with your keystore credentials before building.
+**Important**: The skill automatically generates a secure keystore and saves credentials to `android-signing/CREDENTIALS.txt`.
 
 **Windows PowerShell:**
 ```powershell
-$env:MYAPP_KEYSTORE_PATH = "C:\path\to\myapp-release.keystore"
-$env:MYAPP_KEYSTORE_PASSWORD = "your-password"
+# Get credentials from android-signing/CREDENTIALS.txt
+$KEYSTORE_PATH = (Resolve-Path android-signing\myapp-release.keystore).Path
+$env:MYAPP_KEYSTORE_PATH = $KEYSTORE_PATH
+$env:MYAPP_KEYSTORE_PASSWORD = "your-password-from-credentials-file"
 $env:MYAPP_KEY_ALIAS = "myapp"
-$env:MYAPP_KEY_PASSWORD = "your-password"
+$env:MYAPP_KEY_PASSWORD = "your-password-from-credentials-file"
 cd android
 .\gradlew.bat bundleRelease
 ```
 
 **macOS/Linux/Git Bash:**
 ```bash
-MYAPP_KEYSTORE_PATH="/path/to/keystore" MYAPP_KEYSTORE_PASSWORD="pass" MYAPP_KEY_ALIAS="myapp" MYAPP_KEY_PASSWORD="pass" ./gradlew bundleRelease
+# Get credentials from android-signing/CREDENTIALS.txt
+export MYAPP_KEYSTORE_PATH="$(pwd)/android-signing/myapp-release.keystore"
+export MYAPP_KEYSTORE_PASSWORD="your-password-from-credentials-file"
+export MYAPP_KEY_ALIAS="myapp"
+export MYAPP_KEY_PASSWORD="your-password-from-credentials-file"
+cd android
+./gradlew bundleRelease
 ```
 
 Output: `android/app/build/outputs/bundle/release/app-release.aab`
 
-> **Note**: The skill generates a keystore and stores credentials in `docs/SECRET_INFO.md`. Keep this file safe and never commit it!
+**New in v2.2**: The skill automatically:
+- Generates a cryptographically secure 32-character password
+- Creates the keystore non-interactively (no manual prompts!)
+- Saves all credentials to `android-signing/CREDENTIALS.txt`
+- Creates `android-signing/SETUP-INSTRUCTIONS.md` with step-by-step Codemagic and Google Play setup
+- Provides ready-to-paste values for CI/CD configuration
+
+> **Security Note**: The `android-signing/` folder contains everything needed to sign your app. Back it up securely and never commit it to git!
 
 ### iOS (macOS)
 ```bash
@@ -238,4 +257,4 @@ See the full guides for detailed explanations and complete solutions.
 
 ---
 
-**Last Updated:** January 2026 - Added support for separate iOS bundle ID and Android package name configuration
+**Last Updated:** January 2026 (v2.2) - Added automated Android keystore generation with secure passwords, comprehensive deployment guides, and streamlined CI/CD setup

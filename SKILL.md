@@ -257,21 +257,126 @@ Update `AndroidManifest.xml` with:
 - Billing permission (if RevenueCat)
 - HTTPS-only traffic
 
-### Phase 6.5: Generate Release Keystore & Signing Config
+### Phase 6.5: Generate Release Keystore & Signing Config (AUTOMATED)
 
-**CRITICAL**: Google Play requires signed AABs. This phase sets up release signing.
+**CRITICAL**: Google Play requires signed AABs. This phase automatically generates a secure keystore and signing configuration.
 
-#### 1. Generate a release keystore:
+#### 1. Generate secure password and keystore automatically:
+
 ```bash
-keytool -genkey -v -keystore android/{{APP_NAME_LOWER}}-release.keystore -keyalg RSA -keysize 2048 -validity 10000 -alias {{APP_NAME_LOWER}}
+# Create android-signing directory
+mkdir -p android-signing
+
+# Generate cryptographically secure password (32-byte base64)
+KEYSTORE_PASSWORD=$(openssl rand -base64 32)
+
+# Generate keystore with secure password (non-interactive)
+keytool -genkey -v \
+  -keystore android-signing/{{APP_NAME_LOWER}}-release.keystore \
+  -alias {{APP_NAME_LOWER}} \
+  -keyalg RSA \
+  -keysize 2048 \
+  -validity 10000 \
+  -storepass "$KEYSTORE_PASSWORD" \
+  -keypass "$KEYSTORE_PASSWORD" \
+  -dname "CN={{APP_NAME}}, OU=Engineering, O={{APP_NAME}}, L=Unknown, ST=Unknown, C=US"
+
+echo "Keystore generated successfully!"
+echo "Password: $KEYSTORE_PASSWORD"
 ```
 
-When prompted, enter:
-- Keystore password (strong, memorable)
-- Key password (can be same as keystore)
-- Your name, organization, location info
+**What This Does:**
+- Creates `android-signing/` folder for all signing materials
+- Generates a cryptographically secure 32-character password
+- Creates the keystore non-interactively (no prompts!)
+- Uses the same password for both keystore and key (recommended)
+- Sets generic but valid identity information
+- Displays the password for you to copy
 
-#### 2. Update `android/app/build.gradle` with signing config:
+**Windows PowerShell Alternative:**
+```powershell
+# Create android-signing directory
+New-Item -ItemType Directory -Force -Path android-signing
+
+# Generate cryptographically secure password
+$bytes = New-Object byte[] 32
+[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+$KEYSTORE_PASSWORD = [Convert]::ToBase64String($bytes)
+
+# Generate keystore (save password first!)
+Write-Host "Generated Password: $KEYSTORE_PASSWORD" -ForegroundColor Green
+Write-Host "SAVE THIS PASSWORD NOW!" -ForegroundColor Yellow
+
+keytool -genkey -v `
+  -keystore android-signing/{{APP_NAME_LOWER}}-release.keystore `
+  -alias {{APP_NAME_LOWER}} `
+  -keyalg RSA `
+  -keysize 2048 `
+  -validity 10000 `
+  -storepass "$KEYSTORE_PASSWORD" `
+  -keypass "$KEYSTORE_PASSWORD" `
+  -dname "CN={{APP_NAME}}, OU=Engineering, O={{APP_NAME}}, L=Unknown, ST=Unknown, C=US"
+```
+
+#### 2. Save credentials to local files automatically:
+
+Create `android-signing/CREDENTIALS.txt`:
+```bash
+cat > android-signing/CREDENTIALS.txt << EOF
+# {{APP_NAME}} Android Keystore Credentials
+# KEEP THIS FILE SAFE AND NEVER COMMIT TO GIT!
+
+Generated: $(date)
+
+Keystore File: android-signing/{{APP_NAME_LOWER}}-release.keystore
+Keystore Password: $KEYSTORE_PASSWORD
+Key Alias: {{APP_NAME_LOWER}}
+Key Password: $KEYSTORE_PASSWORD
+
+# For Codemagic Environment Variables:
+# (Copy these values when setting up your CI/CD)
+{{APP_NAME_UPPER}}_KEYSTORE_PASSWORD: $KEYSTORE_PASSWORD
+{{APP_NAME_UPPER}}_KEY_ALIAS: {{APP_NAME_LOWER}}
+{{APP_NAME_UPPER}}_KEY_PASSWORD: $KEYSTORE_PASSWORD
+
+# For base64-encoded keystore (Codemagic file variable):
+# Run: base64 -w 0 android-signing/{{APP_NAME_LOWER}}-release.keystore
+# Or on macOS: base64 -i android-signing/{{APP_NAME_LOWER}}-release.keystore
+EOF
+
+echo "Credentials saved to android-signing/CREDENTIALS.txt"
+```
+
+**Windows PowerShell:**
+```powershell
+@"
+# {{APP_NAME}} Android Keystore Credentials
+# KEEP THIS FILE SAFE AND NEVER COMMIT TO GIT!
+
+Generated: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+
+Keystore File: android-signing/{{APP_NAME_LOWER}}-release.keystore
+Keystore Password: $KEYSTORE_PASSWORD
+Key Alias: {{APP_NAME_LOWER}}
+Key Password: $KEYSTORE_PASSWORD
+
+# For Codemagic Environment Variables:
+# (Copy these values when setting up your CI/CD)
+{{APP_NAME_UPPER}}_KEYSTORE_PASSWORD: $KEYSTORE_PASSWORD
+{{APP_NAME_UPPER}}_KEY_ALIAS: {{APP_NAME_LOWER}}
+{{APP_NAME_UPPER}}_KEY_PASSWORD: $KEYSTORE_PASSWORD
+
+# For base64-encoded keystore (Codemagic file variable):
+# Run: certutil -encode android-signing\{{APP_NAME_LOWER}}-release.keystore android-signing\keystore-base64.txt
+# Then open keystore-base64.txt and remove header/footer lines
+"@ | Out-File -FilePath android-signing\CREDENTIALS.txt -Encoding UTF8
+
+Write-Host "Credentials saved to android-signing\CREDENTIALS.txt" -ForegroundColor Green
+```
+
+Create `android-signing/SETUP-INSTRUCTIONS.md` with detailed Codemagic and Google Play setup steps (see template provided in Phase 6.6 below).
+
+#### 3. Update `android/app/build.gradle` with signing config:
 
 Add inside the `android { }` block:
 ```groovy
@@ -301,36 +406,220 @@ buildTypes {
 }
 ```
 
-#### 3. Create `docs/SECRET_INFO.md` to store credentials:
-```markdown
-# {{APP_NAME}} Secret Info - KEEP THIS SAFE!
-
-**DO NOT share this file or commit it to GitHub!**
-
-## Keystore (Android Signing)
-
-| Setting | Value |
-|---------|-------|
-| File location | `android/{{APP_NAME_LOWER}}-release.keystore` |
-| Password | `YOUR_PASSWORD_HERE` |
-| Key alias | `{{APP_NAME_LOWER}}` |
-| Key password | `YOUR_PASSWORD_HERE` |
-
-## What to Backup
-
-1. `android/{{APP_NAME_LOWER}}-release.keystore` - The keystore file
-2. This file (`SECRET_INFO.md`) - Your passwords
-
-**WARNING**: If you lose the keystore, you can NEVER update your app on Google Play!
+#### 4. Add android-signing folder to `.gitignore`:
 ```
-
-#### 4. Add keystore to `.gitignore`:
-```
-# Keystore
+# Android signing (NEVER commit these!)
+android-signing/
 *.keystore
 *.jks
-docs/SECRET_INFO.md
 ```
+
+**CRITICAL SECURITY NOTES:**
+- The `android-signing/` folder contains EVERYTHING needed to sign your app
+- If you lose the keystore, you can NEVER update your app on Google Play
+- If someone steals your keystore, they can publish malicious updates
+- Back up this folder to a secure location (encrypted USB, password manager, etc.)
+- NEVER commit it to git, even in private repositories
+
+### Phase 6.6: Create Setup Instructions
+
+Create `android-signing/SETUP-INSTRUCTIONS.md` with step-by-step Codemagic and Google Play setup:
+
+```markdown
+# {{APP_NAME}} - Android Setup Instructions
+
+This guide walks you through uploading your signed Android app to Google Play via Codemagic CI/CD.
+
+## Prerequisites
+
+- [ ] Android app created in Google Play Console
+- [ ] Keystore file generated (android-signing/{{APP_NAME_LOWER}}-release.keystore)
+- [ ] Credentials saved (android-signing/CREDENTIALS.txt)
+- [ ] Codemagic account connected to your repository
+
+## Step 1: Prepare Keystore for Codemagic
+
+Codemagic requires the keystore as a base64-encoded file variable.
+
+### On macOS/Linux:
+\`\`\`bash
+base64 -i android-signing/{{APP_NAME_LOWER}}-release.keystore | pbcopy
+\`\`\`
+This copies the base64 string to your clipboard.
+
+### On Windows (PowerShell):
+\`\`\`powershell
+certutil -encode android-signing\{{APP_NAME_LOWER}}-release.keystore android-signing\keystore-base64.txt
+\`\`\`
+Then open `android-signing\keystore-base64.txt`, remove the header/footer lines, and copy the base64 content.
+
+### On Windows (Git Bash):
+\`\`\`bash
+base64 -w 0 android-signing/{{APP_NAME_LOWER}}-release.keystore | clip
+\`\`\`
+
+## Step 2: Add Environment Variables to Codemagic
+
+1. Go to your Codemagic application settings
+2. Navigate to **Environment variables** section
+3. Add the following variables:
+
+| Variable Name | Value | Secure? |
+|---------------|-------|---------|
+| \`{{APP_NAME_UPPER}}_KEYSTORE\` | [Paste base64 keystore] | Yes |
+| \`{{APP_NAME_UPPER}}_KEYSTORE_PASSWORD\` | [From CREDENTIALS.txt] | Yes |
+| \`{{APP_NAME_UPPER}}_KEY_ALIAS\` | {{APP_NAME_LOWER}} | No |
+| \`{{APP_NAME_UPPER}}_KEY_PASSWORD\` | [From CREDENTIALS.txt] | Yes |
+
+**IMPORTANT**: Mark password variables as "Secure" so they're encrypted!
+
+## Step 3: Update codemagic.yaml
+
+Add Android workflow to your `codemagic.yaml`:
+
+\`\`\`yaml
+workflows:
+  android-release:
+    name: Android Release
+    instance_type: linux_x2
+    max_build_duration: 60
+    environment:
+      android_signing:
+        - keystore_reference: {{APP_NAME_UPPER}}_KEYSTORE
+      vars:
+        PACKAGE_NAME: "{{ANDROID_PACKAGE_NAME}}"
+      node: 22
+    scripts:
+      - name: Install dependencies
+        script: npm ci
+
+      - name: Build web app
+        script: npm run build
+
+      - name: Sync Capacitor
+        script: npx cap sync android
+
+      - name: Set up keystore
+        script: |
+          echo \${{APP_NAME_UPPER}}_KEYSTORE | base64 --decode > android/keystore.jks
+
+      - name: Build Android release
+        script: |
+          cd android
+          export {{APP_NAME_UPPER}}_KEYSTORE_PATH=../android/keystore.jks
+          ./gradlew bundleRelease
+
+    artifacts:
+      - android/app/build/outputs/**/*.aab
+
+    publishing:
+      google_play:
+        credentials: [Your Service Account JSON]
+        track: internal  # or: alpha, beta, production
+        submit_as_draft: true
+\`\`\`
+
+## Step 4: Create Google Play Service Account (for automatic upload)
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project (or select existing)
+3. Enable **Google Play Android Developer API**
+4. Create a service account:
+   - IAM & Admin > Service Accounts > Create Service Account
+   - Name: "Codemagic Publisher"
+   - Grant role: Service Account User
+   - Create JSON key and download
+
+5. Link service account to Google Play:
+   - Google Play Console > Setup > API access
+   - Link the project
+   - Grant access to the service account with "Release to production" permission
+
+6. Upload JSON key to Codemagic:
+   - Codemagic > Teams > Integrations > Google Play
+   - Upload the service account JSON
+   - Name it (e.g., "{{APP_NAME}} Publisher")
+
+## Step 5: Create Internal Testing Track (Recommended First Step)
+
+Before releasing to production:
+
+1. Google Play Console > Your App > Testing > Internal testing
+2. Create internal testing release
+3. Upload your AAB manually first time to verify
+4. Add testers (your email, team members)
+5. Test thoroughly before promoting to production
+
+## Step 6: Push to Trigger Build
+
+\`\`\`bash
+git add .
+git commit -m "Add Android release configuration"
+git push origin main
+\`\`\`
+
+Codemagic will automatically:
+- Build your web app
+- Sync to Android
+- Sign the AAB with your keystore
+- Upload to Google Play (if configured)
+
+## Step 7: Manual Upload (Alternative to Codemagic Auto-Upload)
+
+If you prefer manual control:
+
+1. Download the AAB from Codemagic artifacts
+2. Go to Google Play Console > Your App > Release > Production (or Testing)
+3. Create new release
+4. Upload the AAB
+5. Fill in release notes
+6. Review and roll out
+
+## Troubleshooting
+
+### "Keystore was tampered with, or password was incorrect"
+- Verify password in CREDENTIALS.txt matches what you used
+- Check that base64 encoding was done correctly (no line breaks on Linux)
+
+### "Failed to read key from keystore"
+- Ensure key alias matches: {{APP_NAME_LOWER}}
+- Verify key password is correct (may be different from keystore password)
+
+### "Version code X has already been used"
+- Increment `versionCode` in `android/app/build.gradle`
+- Each upload must have a unique version code
+
+### Build fails with signing errors
+- Check that all environment variables are set in Codemagic
+- Verify keystore file is not corrupted
+- Make sure secure variables are marked as "Secure"
+
+## Security Reminders
+
+- NEVER commit keystore files to git
+- NEVER share CREDENTIALS.txt publicly
+- Keep backup of android-signing/ folder in secure location
+- Rotate service account keys periodically (Google Cloud best practice)
+- Use "submit_as_draft: true" for manual release control
+
+## Next Steps
+
+After successful Android release:
+
+- [ ] Test on multiple devices (different Android versions)
+- [ ] Submit for review in Google Play Console
+- [ ] Set up release notes and screenshots
+- [ ] Configure app store listing (description, images, etc.)
+- [ ] Plan update strategy (versioning, release cadence)
+
+---
+
+**Generated:** $(date)
+**App Name:** {{APP_NAME}}
+**Package Name:** {{ANDROID_PACKAGE_NAME}}
+\`\`\`
+
+Save this to `android-signing/SETUP-INSTRUCTIONS.md` automatically or provide it to the user for manual creation.
 
 ### Phase 7: RevenueCat Integration (Optional)
 
@@ -579,13 +868,14 @@ Create comprehensive guide including:
 | `capacitor.config.ts` | Main Capacitor configuration |
 | `public/error.html` | Offline fallback page |
 | `assets/*.png` | Source icons for generation |
-| `lib/services/revenuecat.ts` | RevenueCat integration |
-| `app/api/webhooks/revenuecat/route.ts` | Webhook handler |
+| `lib/services/revenuecat.ts` | RevenueCat integration (optional) |
+| `app/api/webhooks/revenuecat/route.ts` | Webhook handler (optional) |
 | `codemagic.yaml` | iOS/Android CI/CD config |
 | `docs/APP_STORE_GUIDE.md` | Store submission guide |
-| `docs/SECRET_INFO.md` | Keystore passwords (DO NOT COMMIT) |
 | `scripts/generate-app-icons.mjs` | Icon generation script |
-| `android/*-release.keystore` | Release signing key (DO NOT COMMIT) |
+| `android-signing/{{APP_NAME_LOWER}}-release.keystore` | Release signing key (DO NOT COMMIT) |
+| `android-signing/CREDENTIALS.txt` | Keystore passwords (DO NOT COMMIT) |
+| `android-signing/SETUP-INSTRUCTIONS.md` | Step-by-step Codemagic/Google Play guide |
 
 ## Build Commands
 
@@ -598,30 +888,41 @@ chmod +x ./gradlew  # Required on macOS/Linux!
 
 ### Android Release (signed - for Google Play)
 
+**IMPORTANT**: Get your credentials from `android-signing/CREDENTIALS.txt` before running these commands.
+
 **Windows PowerShell:**
 ```powershell
-$env:{{APP_NAME_UPPER}}_KEYSTORE_PATH = "C:\path\to\{{APP_NAME_LOWER}}-release.keystore"
-$env:{{APP_NAME_UPPER}}_KEYSTORE_PASSWORD = "YOUR_PASSWORD"
+# Get the full path to your keystore
+$KEYSTORE_PATH = (Resolve-Path android-signing\{{APP_NAME_LOWER}}-release.keystore).Path
+
+# Set environment variables (replace password with actual value from CREDENTIALS.txt)
+$env:{{APP_NAME_UPPER}}_KEYSTORE_PATH = $KEYSTORE_PATH
+$env:{{APP_NAME_UPPER}}_KEYSTORE_PASSWORD = "YOUR_PASSWORD_FROM_CREDENTIALS"
 $env:{{APP_NAME_UPPER}}_KEY_ALIAS = "{{APP_NAME_LOWER}}"
-$env:{{APP_NAME_UPPER}}_KEY_PASSWORD = "YOUR_PASSWORD"
+$env:{{APP_NAME_UPPER}}_KEY_PASSWORD = "YOUR_PASSWORD_FROM_CREDENTIALS"
+
+# Build release AAB
 cd android
 .\gradlew.bat bundleRelease
 ```
 
 **macOS/Linux:**
 ```bash
-export {{APP_NAME_UPPER}}_KEYSTORE_PATH="/path/to/{{APP_NAME_LOWER}}-release.keystore"
-export {{APP_NAME_UPPER}}_KEYSTORE_PASSWORD="YOUR_PASSWORD"
+# Set environment variables (replace password with actual value from CREDENTIALS.txt)
+export {{APP_NAME_UPPER}}_KEYSTORE_PATH="$(pwd)/android-signing/{{APP_NAME_LOWER}}-release.keystore"
+export {{APP_NAME_UPPER}}_KEYSTORE_PASSWORD="YOUR_PASSWORD_FROM_CREDENTIALS"
 export {{APP_NAME_UPPER}}_KEY_ALIAS="{{APP_NAME_LOWER}}"
-export {{APP_NAME_UPPER}}_KEY_PASSWORD="YOUR_PASSWORD"
+export {{APP_NAME_UPPER}}_KEY_PASSWORD="YOUR_PASSWORD_FROM_CREDENTIALS"
+
+# Build release AAB
 cd android
 chmod +x ./gradlew  # Don't forget this!
 ./gradlew bundleRelease
 ```
 
-**One-liner (bash/Git Bash on Windows):**
+**One-liner (Git Bash on Windows/macOS/Linux):**
 ```bash
-cd android && chmod +x ./gradlew && {{APP_NAME_UPPER}}_KEYSTORE_PATH="/path/to/keystore" {{APP_NAME_UPPER}}_KEYSTORE_PASSWORD="pass" {{APP_NAME_UPPER}}_KEY_ALIAS="alias" {{APP_NAME_UPPER}}_KEY_PASSWORD="pass" ./gradlew bundleRelease
+cd android && chmod +x ./gradlew && {{APP_NAME_UPPER}}_KEYSTORE_PATH="$(pwd)/../android-signing/{{APP_NAME_LOWER}}-release.keystore" {{APP_NAME_UPPER}}_KEYSTORE_PASSWORD="YOUR_PASSWORD" {{APP_NAME_UPPER}}_KEY_ALIAS="{{APP_NAME_LOWER}}" {{APP_NAME_UPPER}}_KEY_PASSWORD="YOUR_PASSWORD" ./gradlew bundleRelease
 ```
 
 Output: `android/app/build/outputs/bundle/release/app-release.aab`
@@ -814,6 +1115,7 @@ Assistant will:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.2 | Jan 2026 | Automated Android keystore generation with secure passwords, added android-signing/ folder structure, CREDENTIALS.txt and SETUP-INSTRUCTIONS.md auto-generation, comprehensive Codemagic/Google Play setup guide |
 | 2.1 | Jan 2026 | Added support for separate iOS bundle ID and Android package name, explicit configuration in Xcode and build.gradle, bundle ID best practices documentation |
 | 2.0 | Jan 2026 | Capacitor 8 support, SPM instead of CocoaPods, Node 22 requirement, Java 21 requirement, RevenueCat compatibility fixes |
 | 1.0 | 2024 | Initial release for Capacitor 7 |
