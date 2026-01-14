@@ -24,11 +24,12 @@ Wraps any web app (PWA or hosted URL) in Capacitor to create native iOS and Andr
 1. **Installs Capacitor** and required plugins
 2. **Configures remote URL** loading for your web app
 3. **Generates app icons** and splash screens from your existing assets
-4. **Sets up RevenueCat** for in-app subscriptions (optional)
-5. **Configures native platforms** (Android/iOS) with proper styling
-6. **Creates Codemagic config** for iOS cloud builds
-7. **Generates store listing** text ready to copy-paste
-8. **Provides build commands** for both Windows and macOS
+4. **Generates app store screenshots** automatically for iOS and Android (NEW in v2.3)
+5. **Sets up RevenueCat** for in-app subscriptions (optional)
+6. **Configures native platforms** (Android/iOS) with proper styling
+7. **Creates Codemagic config** for iOS cloud builds
+8. **Generates store listing** text ready to copy-paste
+9. **Provides build commands** for both Windows and macOS
 
 ## Prerequisites
 
@@ -844,7 +845,105 @@ The skill configures **upload-only mode** (`submit_to_app_store: false`) by defa
    - Encryption declaration (usually "NO" for standard apps)
 5. Click "Submit for Review" when ready
 
-### Phase 9: Create Build Configurations
+### Phase 9: Generate App Store Screenshots (Automated)
+
+**NEW in v2.3:** Automated screenshot generation using Playwright for both iOS and Android app stores.
+
+#### 9.1: Install Playwright
+
+```bash
+npm install -D playwright
+npx playwright install chromium
+```
+
+#### 9.2: Create Screenshot Generation Script
+
+Copy the screenshot generator to `scripts/generate-app-screenshots.mjs` (see examples/generate-app-screenshots.mjs in the skill repository).
+
+The script automatically generates:
+- **iOS Screenshots**: 6.9" iPhone (mandatory), 6.7" iPhone, 6.5" iPhone, 5.5" iPhone, 13" iPad Pro (mandatory), 12.9" iPad Pro
+- **Android Screenshots**: Phone portrait (1080x1920, 1440x2560), phone landscape (1920x1080), tablet 7" and 10" portrait
+
+#### 9.3: Customize Screenshot Scenarios
+
+Edit the `CONFIG.scenarios` array in the script to capture your app's key screens:
+
+```javascript
+scenarios: [
+  {
+    name: 'home',
+    description: 'Home Screen',
+    path: '/',
+    waitForSelector: 'body',
+  },
+  {
+    name: 'create-card',
+    description: 'Card Creation Flow',
+    path: '/create',
+    waitForSelector: '.wizard-container',
+    actions: async (page) => {
+      // Optional: perform actions before screenshot
+      await page.click('#start-button');
+      await page.waitForTimeout(1000);
+    }
+  },
+  // Add more scenarios for your app's features
+]
+```
+
+#### 9.4: Generate Screenshots
+
+```bash
+# Start your dev server first
+npm run dev
+
+# In another terminal, generate screenshots
+node scripts/generate-app-screenshots.mjs
+```
+
+Or for a production build:
+
+```bash
+# Build and preview
+npm run build
+npm run preview
+
+# Generate from preview
+APP_URL=http://localhost:4173 node scripts/generate-app-screenshots.mjs
+```
+
+**Output:**
+- `screenshots/ios/` - iOS App Store screenshots (6 sizes x number of scenarios)
+- `screenshots/android/` - Google Play screenshots (5 sizes x number of scenarios)
+
+**Add to `.gitignore`:**
+```gitignore
+# Screenshots (optional - commit if you want to version them)
+screenshots/
+```
+
+#### 9.5: App Store Screenshot Requirements (2026)
+
+**Apple App Store:**
+- **Mandatory:** 6.9" iPhone (1320x2868) and 13" iPad (2064x2752)
+- Optional: Additional iPhone sizes (6.7", 6.5", 5.5") and iPad 12.9"
+- Format: PNG or JPEG, 72 DPI, no transparency
+- Quantity: 1-10 screenshots per device size
+
+**Google Play Store:**
+- **Minimum:** 2 screenshots at 1080x1920 (portrait) or 1920x1080 (landscape)
+- **Recommended:** 4-8 screenshots showing key features
+- Dimensions: Min 320px, max 3840px (max dimension ≤ 2× min dimension)
+- Format: 24-bit PNG or JPEG, no alpha, max 8MB per file
+
+**Pro Tips:**
+- Capture real user flows, not just static screens
+- Show your app's unique value proposition
+- Consider adding text overlays explaining features (do this manually after generation)
+- Test on actual devices if possible before finalizing
+- Localize screenshots for major markets (can re-run script with localized app)
+
+### Phase 10: Create Build Configurations
 
 Create `codemagic.yaml` for CI/CD:
 - iOS App Store workflow (see Phase 8)
@@ -852,7 +951,7 @@ Create `codemagic.yaml` for CI/CD:
 - Android Play Store workflow
 - Android debug workflow
 
-### Phase 10: Generate Documentation
+### Phase 11: Generate Documentation
 
 Create comprehensive guide including:
 - Build commands for Windows/macOS
@@ -873,6 +972,9 @@ Create comprehensive guide including:
 | `codemagic.yaml` | iOS/Android CI/CD config |
 | `docs/APP_STORE_GUIDE.md` | Store submission guide |
 | `scripts/generate-app-icons.mjs` | Icon generation script |
+| `scripts/generate-app-screenshots.mjs` | **NEW:** Automated screenshot generator |
+| `screenshots/ios/*.png` | **NEW:** iOS App Store screenshots (6 sizes per scenario) |
+| `screenshots/android/*.png` | **NEW:** Android Play Store screenshots (5 sizes per scenario) |
 | `android-signing/{{APP_NAME_LOWER}}-release.keystore` | Release signing key (DO NOT COMMIT) |
 | `android-signing/CREDENTIALS.txt` | Keystore passwords (DO NOT COMMIT) |
 | `android-signing/SETUP-INSTRUCTIONS.md` | Step-by-step Codemagic/Google Play guide |
@@ -1115,6 +1217,7 @@ Assistant will:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.3 | Jan 2026 | **NEW:** Automated screenshot generation for both iOS and Android app stores using Playwright, generates all required screenshot sizes (6.9" iPhone, 13" iPad Pro mandatory for iOS 2026), customizable scenarios for capturing key app screens |
 | 2.2 | Jan 2026 | Automated Android keystore generation with secure passwords, added android-signing/ folder structure, CREDENTIALS.txt and SETUP-INSTRUCTIONS.md auto-generation, comprehensive Codemagic/Google Play setup guide |
 | 2.1 | Jan 2026 | Added support for separate iOS bundle ID and Android package name, explicit configuration in Xcode and build.gradle, bundle ID best practices documentation |
 | 2.0 | Jan 2026 | Capacitor 8 support, SPM instead of CocoaPods, Node 22 requirement, Java 21 requirement, RevenueCat compatibility fixes |

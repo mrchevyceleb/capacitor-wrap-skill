@@ -7,6 +7,7 @@ A Claude Code skill that wraps any web app in Capacitor for iOS and Android app 
 - **One-command setup**: Installs and configures Capacitor for any web app
 - **Automated keystore generation**: Secure Android signing with auto-generated credentials
 - **Icon generation**: Creates all required app store icon sizes from a single source
+- **Screenshot automation**: **NEW in v2.3** - Automated Playwright-based screenshot generation for iOS and Android
 - **RevenueCat integration**: Optional in-app subscription support
 - **Cross-platform builds**: Works on Windows and macOS
 - **Cloud CI/CD**: Codemagic configuration for iOS builds without a Mac
@@ -54,11 +55,12 @@ The skill will guide you through:
 1. Gathering app details (name, iOS bundle ID, Android package name, colors)
 2. Installing Capacitor dependencies
 3. Generating icons and splash screens
-4. Configuring native platforms with separate bundle identifiers
-5. **Automatically generating Android keystore with secure passwords**
-6. Setting up RevenueCat (optional)
-7. Creating build configurations
-8. Generating comprehensive store listing documentation and deployment guides
+4. **Automatically generating app store screenshots using Playwright** (NEW in v2.3)
+5. Configuring native platforms with separate bundle identifiers
+6. **Automatically generating Android keystore with secure passwords**
+7. Setting up RevenueCat (optional)
+8. Creating build configurations
+9. Generating comprehensive store listing documentation and deployment guides
 
 **Important**: The skill now properly handles separate bundle IDs for iOS and Android:
 - iOS uses bundle ID (e.g., `app.company.appname` or `ai.carouselcards.app`)
@@ -77,6 +79,9 @@ The skill will guide you through:
 | `codemagic.yaml` | iOS/Android CI/CD config |
 | `docs/APP_STORE_GUIDE.md` | Store submission guide |
 | `scripts/generate-app-icons.mjs` | Icon generation script |
+| `scripts/generate-app-screenshots.mjs` | **NEW:** Automated screenshot generator |
+| `screenshots/ios/*.png` | **NEW:** iOS App Store screenshots |
+| `screenshots/android/*.png` | **NEW:** Android Play Store screenshots |
 | `android/` | Android native project |
 | `android-signing/` | **Android signing folder** (DO NOT COMMIT) |
 | `android-signing/*.keystore` | Auto-generated release signing key |
@@ -154,6 +159,82 @@ npx cap open ios
 
 ### iOS (Codemagic)
 Push to your repo's main branch - Codemagic builds automatically.
+
+## Screenshot Generation (NEW in v2.3)
+
+The skill now includes automated screenshot generation for both iOS and Android app stores using Playwright.
+
+### Quick Start
+
+```bash
+# Install Playwright
+npm install -D playwright
+npx playwright install chromium
+
+# Start your app
+npm run dev
+
+# Generate screenshots (in another terminal)
+node scripts/generate-app-screenshots.mjs
+```
+
+### What Gets Generated
+
+**iOS Screenshots:**
+- 6.9" iPhone (1320x2868) - **Mandatory for 2026**
+- 6.7" iPhone (1290x2796)
+- 6.5" iPhone (1242x2688)
+- 5.5" iPhone (1242x2208)
+- 13" iPad Pro (2064x2752) - **Mandatory for 2026**
+- 12.9" iPad Pro (2048x2732)
+
+**Android Screenshots:**
+- Phone portrait: 1080x1920, 1440x2560
+- Phone landscape: 1920x1080
+- Tablet 7": 1200x1920
+- Tablet 10": 1600x2560
+
+### Customization
+
+Edit `scripts/generate-app-screenshots.mjs` to customize:
+- App URL (local or production)
+- Screenshot scenarios (which screens to capture)
+- Custom actions before screenshots (e.g., click buttons, fill forms)
+- Wait times and selectors
+
+Example scenario configuration:
+```javascript
+scenarios: [
+  {
+    name: 'home',
+    description: 'Home Screen',
+    path: '/',
+    waitForSelector: '.main-content',
+  },
+  {
+    name: 'feature',
+    description: 'Key Feature',
+    path: '/feature',
+    waitForSelector: '.feature-container',
+    actions: async (page) => {
+      await page.click('#demo-button');
+      await page.waitForTimeout(1000);
+    }
+  }
+]
+```
+
+### App Store Requirements
+
+**Apple App Store (2026):**
+- Mandatory: 6.9" iPhone + 13" iPad Pro
+- 1-10 screenshots per device size
+- PNG or JPEG, 72 DPI, no transparency
+
+**Google Play Store:**
+- Minimum: 2 screenshots (1080x1920 or higher)
+- Recommended: 4-8 screenshots
+- 24-bit PNG or JPEG, max 8MB
 
 ## RevenueCat Setup
 
@@ -257,4 +338,4 @@ See the full guides for detailed explanations and complete solutions.
 
 ---
 
-**Last Updated:** January 2026 (v2.2) - Added automated Android keystore generation with secure passwords, comprehensive deployment guides, and streamlined CI/CD setup
+**Last Updated:** January 2026 (v2.3) - Added automated screenshot generation for iOS and Android app stores with Playwright, supporting all required 2026 dimensions including mandatory 6.9" iPhone and 13" iPad Pro
