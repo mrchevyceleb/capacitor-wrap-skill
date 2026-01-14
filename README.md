@@ -1,17 +1,26 @@
+# Capacitor Wrap Skill for Claude Code - v2.4
+
+**NEW in v2.4:** Optimized for non-technical users! Local builds are now the PRIMARY method. No CI/CD required.
+
 # Capacitor Wrap Skill for Claude Code
 
 A Claude Code skill that wraps any web app in Capacitor for iOS and Android app store deployment, with optional RevenueCat subscription integration.
 
 ## Features
 
+## Features - v2.4: No CI/CD Required!
+
+- **Local builds PRIMARY**: Simple AAB/IPA generation without CI/CD complexity
+- **Pre-written store content**: Auto-generated PLAY-STORE-LISTING.md (NEW in v2.4)
+- **Kid-friendly upload guide**: UPLOAD-INSTRUCTIONS.md written for ages 10+ (NEW in v2.4)
 - **One-command setup**: Installs and configures Capacitor for any web app
 - **Automated keystore generation**: Secure Android signing with auto-generated credentials
 - **Icon generation**: Creates all required app store icon sizes from a single source
-- **Screenshot automation**: **NEW in v2.3** - Automated Playwright-based screenshot generation for iOS and Android
+- **Screenshot automation**: Automated Playwright-based screenshot generation for iOS and Android
 - **RevenueCat integration**: Optional in-app subscription support
 - **Cross-platform builds**: Works on Windows and macOS
-- **Cloud CI/CD**: Codemagic configuration for iOS builds without a Mac
-- **Store-ready**: Generates copy-paste store listing text and deployment guides
+- **CodeMagic CI/CD**: Optional advanced configuration (for experienced developers)
+- **Store-ready**: Everything needed for app store submission
 
 ## Installation
 
