@@ -1009,7 +1009,209 @@ node scripts/generate-feature-graphic.mjs
 - Test on actual devices if possible before finalizing
 - Localize screenshots for major markets (can re-run script with localized app)
 
-### Phase 10: Create Build Configurations
+### Phase 10: Monetization Setup (RevenueCat + App Stores)
+
+**NEW in v2.5:** Comprehensive monetization setup guide for in-app purchases and subscriptions.
+
+If your app includes subscriptions or consumables (credits, tokens, coins), follow this phase to set up RevenueCat integration and configure products in both app stores.
+
+#### Overview
+
+**Why RevenueCat?**
+- Single API for both iOS and Android
+- Automatic receipt validation
+- Subscription analytics and insights
+- Webhook support for backend sync
+- Free up to $2.5M in tracked revenue
+
+**What You'll Set Up:**
+1. Product IDs in your code (subscriptions and consumables)
+2. RevenueCat project with iOS and Android apps
+3. In-app purchases in App Store Connect (iOS)
+4. In-app products in Google Play Console (Android)
+5. RevenueCat integration (entitlements, offerings, API keys)
+6. Testing with sandbox accounts
+
+#### Step 1: Define Product IDs in Code
+
+Create `services/iap.ts` with your product configuration:
+
+```typescript
+export const IAP_PRODUCTS = {
+  // Subscriptions (auto-renewable)
+  PRO_MONTHLY: 'pro_monthly',
+  PRO_YEARLY: 'pro_yearly',
+
+  // Consumables (credits, tokens, coins)
+  CREDITS_50: 'credits_50',
+  CREDITS_200: 'credits_200',
+  CREDITS_500: 'credits_500',
+} as const;
+
+export const PRODUCT_INFO: Record<IAPProductId, IAPProduct> = {
+  [IAP_PRODUCTS.PRO_MONTHLY]: {
+    id: IAP_PRODUCTS.PRO_MONTHLY,
+    title: 'Pro Monthly',
+    description: 'Unlimited AI generations & premium features',
+    price: '$4.99/month',
+    type: 'subscription',
+  },
+  // ... see examples/iap-products-config.ts for full template
+};
+```
+
+**Product Naming Patterns:**
+- Subscriptions: `{tier}_{period}` (e.g., `pro_monthly`, `premium_yearly`)
+- Consumables: `credits_{amount}` or `tokens_{amount}` (e.g., `credits_50`)
+
+**CRITICAL:** Product IDs must match EXACTLY across:
+- Your code
+- RevenueCat dashboard
+- App Store Connect (iOS)
+- Google Play Console (Android)
+
+#### Step 2: Create RevenueCat Account
+
+1. Go to [app.revenuecat.com](https://app.revenuecat.com)
+2. Sign up (free tier available)
+3. Create a new project
+4. Add iOS app with your iOS bundle ID
+5. Add Android app with your Android package name
+
+**Note:** iOS and Android are configured separately with their own API keys.
+
+#### Step 3: Configure App Store Connect (iOS)
+
+**Create Subscriptions:**
+1. App Store Connect → My Apps → Your App → **Features** → **In-App Purchases**
+2. Click **+** → **Auto-Renewable Subscription**
+3. Product ID: `pro_monthly` (must match code!)
+4. Create/select subscription group
+5. Duration: 1 month (or 1 year for yearly)
+6. Price: $4.99 USD (add all territories)
+7. Add localization (English required)
+8. Save → **Submit for Review**
+
+**Create Consumables:**
+1. Click **+** → **Consumable**
+2. Product ID: `credits_50` (must match code!)
+3. Price: $4.99 USD
+4. Add localization
+5. Save → **Submit for Review**
+
+**Get Shared Secret:**
+- My Apps → Your App → App Store tab → App Information
+- Scroll to "App-Specific Shared Secret"
+- Generate → Copy to RevenueCat integration
+
+#### Step 4: Configure Google Play Console (Android)
+
+**Create Subscriptions:**
+1. Play Console → Your App → **Monetize** → **Products** → **Subscriptions**
+2. Click **Create subscription**
+3. Product ID: `pro_monthly` (must match code!)
+4. Name: Pro Monthly
+5. Base plan: `monthly`, billing period: 1 month
+6. Price: $4.99 USD (auto-converts currencies)
+7. Optional: Enable 7-day free trial
+8. **Activate** (top right)
+
+**Create Consumables:**
+1. **In-app products** tab → **Create product**
+2. Product ID: `credits_50` (must match code!)
+3. Name: 50 Credits
+4. Price: $4.99 USD
+5. Status: **Active**
+6. Save
+
+**Get Service Account JSON:**
+- Play Console → Setup → API access
+- Link Google Cloud project
+- Create service account
+- Download JSON key
+- Upload to RevenueCat integration
+
+#### Step 5: Configure RevenueCat
+
+**Create Entitlements:**
+1. RevenueCat dashboard → **Entitlements** → **New Entitlement**
+2. Identifier: `pro` (or `premium`, `elite`)
+3. Description: "Pro features access"
+
+**Create Products:**
+1. **Products** → **New Product**
+2. Product ID: `pro_monthly` (match code!)
+3. Type: Subscription or Consumable
+4. Store Product IDs:
+   - iOS: `pro_monthly` (from App Store Connect)
+   - Android: `pro_monthly` (from Google Play Console)
+5. Save
+
+**Create Offerings:**
+1. **Offerings** → **New Offering**
+2. Identifier: `default`
+3. Add packages:
+   - Package: `$rc_monthly` → Product: `pro_monthly`
+   - Package: `$rc_annual` → Product: `pro_yearly`
+4. Save
+
+**Get API Keys:**
+1. **Settings** → **API Keys**
+2. Copy iOS Public SDK Key (`appl_...`)
+3. Copy Android Public SDK Key (`goog_...`)
+4. Add to `.env`:
+   ```
+   VITE_REVENUECAT_IOS_API_KEY=appl_xxx
+   VITE_REVENUECAT_ANDROID_API_KEY=goog_xxx
+   ```
+
+#### Step 6: Testing
+
+**iOS Sandbox Testing:**
+1. App Store Connect → Users and Access → **Sandbox Testers**
+2. Create tester account (unique email)
+3. On device: Sign out of real App Store account
+4. Install app, make purchase, sign in with sandbox account
+5. Verify purchase appears in RevenueCat dashboard
+
+**Android License Testing:**
+1. Play Console → Settings → **License Testing**
+2. Add tester email (your Google account)
+3. Install app via internal testing or debug
+4. Sign in with Google account
+5. Test purchases (instant and free)
+
+#### Recommended Pricing
+
+**Subscriptions:**
+- Monthly: $4.99 - $9.99
+- Yearly: $39.99 - $79.99 (20-30% savings vs monthly)
+- Free trial: 3-7 days (recommended)
+
+**Consumables:**
+- Starter pack: $4.99 (50-100 credits)
+- Value pack: $14.99 (200-300 credits)
+- Best value: $29.99 (500-1000 credits)
+
+**Pro Tip:** Offer 3 tiers to leverage "goldilocks effect" - most users choose middle option.
+
+#### Common Pitfalls
+
+1. **Product ID mismatches** - Copy-paste IDs, don't retype!
+2. **Wrong API key** - iOS and Android have separate keys
+3. **Products not activated (Android)** - Must click "Activate" button
+4. **Products not approved (iOS)** - Can still test in sandbox before approval
+5. **Subscription groups** - All tiers must be in same group (iOS)
+
+#### Resources
+
+For complete step-by-step instructions:
+- **Full Guide:** `examples/MONETIZATION-SETUP-TEMPLATE.md`
+- **Quick Reference:** `examples/MONETIZATION-QUICK-REFERENCE.md`
+- **Code Template:** `examples/iap-products-config.ts`
+- **RevenueCat Docs:** https://www.revenuecat.com/docs
+
+### Phase 11: Create Build Configurations
 
 Create `codemagic.yaml` for CI/CD:
 - iOS App Store workflow (see Phase 8)
@@ -1017,7 +1219,7 @@ Create `codemagic.yaml` for CI/CD:
 - Android Play Store workflow
 - Android debug workflow
 
-### Phase 11: Generate Documentation
+### Phase 12: Generate Documentation
 
 Create comprehensive guide including:
 - Build commands for Windows/macOS
@@ -1048,6 +1250,9 @@ Create comprehensive guide including:
 | `android-signing/{{APP_NAME_LOWER}}-release.keystore` | Release signing key (DO NOT COMMIT) |
 | `android-signing/CREDENTIALS.txt` | Keystore passwords (DO NOT COMMIT) |
 | `android-signing/SETUP-INSTRUCTIONS.md` | Step-by-step Codemagic/Google Play guide |
+| `examples/MONETIZATION-SETUP-TEMPLATE.md` | **NEW v2.5:** Complete monetization setup guide |
+| `examples/MONETIZATION-QUICK-REFERENCE.md` | **NEW v2.5:** One-page monetization cheat sheet |
+| `examples/iap-products-config.ts` | **NEW v2.5:** IAP products configuration template |
 
 ## Build Commands
 
@@ -1287,6 +1492,7 @@ Assistant will:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.5 | Jan 2026 | **NEW:** Comprehensive monetization setup guide for RevenueCat + app stores, complete IAP/subscription documentation covering product configuration, App Store Connect setup, Google Play Console setup, RevenueCat integration, testing procedures, and pricing recommendations |
 | 2.4 | Jan 2026 | **NEW:** Android feature graphic generator (1024x500 REQUIRED for Play Store), improved screenshot organization (separate phone/tablet-7/tablet-10 directories), updated Play Store requirements documentation with feature graphic as mandatory asset |
 | 2.3 | Jan 2026 | **NEW:** Automated screenshot generation for both iOS and Android app stores using Playwright, generates all required screenshot sizes (6.9" iPhone, 13" iPad Pro mandatory for iOS 2026), customizable scenarios for capturing key app screens |
 | 2.2 | Jan 2026 | Automated Android keystore generation with secure passwords, added android-signing/ folder structure, CREDENTIALS.txt and SETUP-INSTRUCTIONS.md auto-generation, comprehensive Codemagic/Google Play setup guide |

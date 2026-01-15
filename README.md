@@ -8,11 +8,14 @@ A Claude Code skill that wraps any web app in Capacitor for iOS and Android app 
 
 ## Features
 
-## Features - v2.4: No CI/CD Required!
+## Features - v2.5: Full Monetization Support!
 
+- **Monetization setup guide**: Comprehensive RevenueCat + app stores documentation (NEW in v2.5)
+- **IAP configuration templates**: Product IDs, pricing, and code examples (NEW in v2.5)
+- **Quick reference card**: One-page cheat sheet for monetization setup (NEW in v2.5)
 - **Local builds PRIMARY**: Simple AAB/IPA generation without CI/CD complexity
-- **Pre-written store content**: Auto-generated PLAY-STORE-LISTING.md (NEW in v2.4)
-- **Kid-friendly upload guide**: UPLOAD-INSTRUCTIONS.md written for ages 10+ (NEW in v2.4)
+- **Pre-written store content**: Auto-generated PLAY-STORE-LISTING.md
+- **Kid-friendly upload guide**: UPLOAD-INSTRUCTIONS.md written for ages 10+
 - **One-command setup**: Installs and configures Capacitor for any web app
 - **Automated keystore generation**: Secure Android signing with auto-generated credentials
 - **Icon generation**: Creates all required app store icon sizes from a single source
@@ -101,6 +104,9 @@ The skill will guide you through:
 | `android-signing/*.keystore` | Auto-generated release signing key |
 | `android-signing/CREDENTIALS.txt` | Auto-generated passwords and setup values |
 | `android-signing/SETUP-INSTRUCTIONS.md` | Step-by-step Codemagic/Google Play guide |
+| `examples/MONETIZATION-SETUP-TEMPLATE.md` | **NEW v2.5:** Complete monetization setup guide |
+| `examples/MONETIZATION-QUICK-REFERENCE.md` | **NEW v2.5:** One-page monetization cheat sheet |
+| `examples/iap-products-config.ts` | **NEW v2.5:** IAP products configuration template |
 | `ios/` | iOS native project |
 
 ## Prerequisites
@@ -266,31 +272,76 @@ Edit `scripts/generate-feature-graphic.mjs` to customize:
 
 Output: `screenshots/android/feature-graphic.png`
 
-## RevenueCat Setup
+## Monetization Setup (NEW in v2.5)
 
-When you enable RevenueCat integration, the skill creates:
+The skill now includes comprehensive monetization documentation to help you set up in-app purchases and subscriptions.
 
-1. **RevenueCat service** (`lib/services/revenuecat.ts`)
-   - Initialize with user ID
-   - Get subscription offerings
-   - Purchase packages
-   - Check entitlements
-   - Restore purchases
+### What's Included
 
-2. **Webhook endpoint** (`app/api/webhooks/revenuecat/route.ts`)
-   - Handle subscription events
-   - Sync with your database
+**Documentation:**
+- **MONETIZATION-SETUP-TEMPLATE.md** - Complete step-by-step guide covering:
+  - Product configuration in code
+  - RevenueCat account and app setup
+  - iOS App Store Connect configuration
+  - Google Play Console configuration
+  - Testing procedures
+  - Common pitfalls and solutions
 
-After running the skill, you'll need to:
-1. Create a RevenueCat account at [app.revenuecat.com](https://app.revenuecat.com)
-2. Add your iOS app with iOS bundle ID
-3. Add your Android app with Android package name
-4. Create entitlements (e.g., `pro`, `elite`)
-5. Copy your platform-specific API keys to the generated service file
-6. Set up products in App Store Connect and Google Play Console
-7. Configure the webhook URL in RevenueCat
+- **MONETIZATION-QUICK-REFERENCE.md** - One-page cheat sheet with:
+  - Dashboard URLs
+  - Quick setup flow
+  - Product ID naming patterns
+  - Recommended pricing
+  - Common issues and solutions
 
-**Note**: RevenueCat requires separate app entries for iOS and Android with their respective bundle identifiers.
+- **iap-products-config.ts** - Code template showing:
+  - Product ID definitions
+  - Product info structures
+  - Helper functions
+  - Usage examples
+
+### Setup Overview
+
+1. **Define products in code** - Subscriptions and consumables with consistent IDs
+2. **Create RevenueCat account** - Add iOS and Android apps
+3. **Configure App Store Connect** - Create in-app purchases (subscriptions/consumables)
+4. **Configure Google Play Console** - Create products and activate them
+5. **Set up RevenueCat** - Create entitlements, products, and offerings
+6. **Get API keys** - Add to environment variables
+7. **Test** - iOS sandbox and Android license testing
+
+### Product Examples
+
+Based on the Carousel app implementation:
+
+**Subscriptions:**
+- `pro_monthly` - $4.99/month
+- `pro_yearly` - $39.99/year
+
+**Consumables:**
+- `credits_50` - $4.99
+- `credits_200` - $14.99
+- `credits_500` - $29.99
+
+### Quick Start
+
+```typescript
+// Define products
+export const IAP_PRODUCTS = {
+  PRO_MONTHLY: 'pro_monthly',
+  PRO_YEARLY: 'pro_yearly',
+  CREDITS_50: 'credits_50',
+} as const;
+
+// Initialize RevenueCat
+const apiKey = Platform.OS === 'ios'
+  ? process.env.REVENUECAT_IOS_KEY
+  : process.env.REVENUECAT_ANDROID_KEY;
+
+await Purchases.configure({ apiKey, appUserID: userId });
+```
+
+See `examples/MONETIZATION-SETUP-TEMPLATE.md` for complete instructions.
 
 ## Store Listing
 
@@ -368,4 +419,4 @@ See the full guides for detailed explanations and complete solutions.
 
 ---
 
-**Last Updated:** January 2026 (v2.4) - Added Android feature graphic generator (1024x500 REQUIRED), improved screenshot organization with separate phone/tablet directories, updated Play Store documentation with feature graphic as mandatory asset
+**Last Updated:** January 2026 (v2.5) - Added comprehensive monetization setup guide for RevenueCat and app stores, including IAP product configuration templates, complete store setup instructions, testing procedures, and pricing recommendations
